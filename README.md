@@ -1,0 +1,293 @@
+# L4D2 VPK Manager (PyWebView + Vue3 版本)
+
+一个现代化的求生之路 2 (Left 4 Dead 2) VPK 文件管理工具，采用 **Vue3 + Python PyWebView** 架构，使用 Nuitka 打包为单一可执行文件。
+
+## 功能特性
+
+✨ **核心功能**
+- 📁 浏览并选择 L4D2 游戏目录
+- 📦 扫描并列出本地 VPK 文件和 Steam 创意工坊文件
+- 💾 导出选定的 VPK 文件为 tar.zst 压缩包
+- 🗑️ 删除或禁用 VPK 文件
+- 🌍 完整的双语支持（英文和简体中文）
+- ⚡ 快速的 VPK 元数据提取和缓存系统
+
+🏗️ **技术特点**
+- **前端：** Vue 3 + TypeScript + Pinia + Vite
+- **后端：** Python 3.12 + PyWebView
+- **国际化：** vue-i18n JSON 翻译文件
+- **打包：** Nuitka 生成单一 .exe（Windows）
+- **开发：** Hot reload + 并行前后端调试
+
+## 快速开始
+
+### 系统要求
+
+- **操作系统：** Windows 10/11
+- **Python：** 3.12
+- **Node.js：** 20+
+- **Conda：** Anaconda 或 Miniconda
+
+### 1. 安装环境
+
+```bash
+# 从 environment.yml 创建 Conda 环境
+conda env create -f environment.yml
+
+# 激活环境
+conda activate hpf-vpk-manager-pywebview
+
+# 安装 Python 依赖
+pip install -r requirements.txt
+```
+
+### 2. 启动开发环境
+
+```powershell
+# 一键启动（前端 + 后端）
+.\scripts\dev.ps1
+
+# 或分别启动：
+# 终端 1 - 启动 Vite dev server
+cd frontend && npm run dev
+
+# 终端 2 - 启动 Python 应用
+python main.py
+```
+
+应用将在 PyWebView 窗口中打开。
+
+### 3. 构建生产版本
+
+```powershell
+# 构建前端静态资源
+.\scripts\build-frontend.ps1
+
+# 打包为单一 .exe 文件
+.\scripts\package-nuitka.ps1
+
+# 输出文件：dist/main.exe
+```
+
+## 项目结构
+
+```
+├── main.py                        # PyWebView 应用入口
+├── environment.yml                # Conda 环境配置
+├── requirements.txt               # Python 依赖
+│
+├── frontend/                      # Vue3 前端应用
+│   ├── src/
+│   │   ├── components/            # Vue 组件
+│   │   ├── stores/                # Pinia 状态管理
+│   │   ├── composables/           # Vue 组件钩子
+│   │   ├── i18n/                  # 国际化配置和翻译文件
+│   │   ├── App.vue                # 根组件
+│   │   └── main.ts                # 前端入口
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+│
+├── backend/                       # Python 后端
+│   ├── api.py                     # PyWebView API 接口
+│   ├── models.py                  # 数据模型
+│   └── services/
+│       ├── vpk_metadata_service.py    # VPK 元数据提取
+│       ├── vpk_export_service.py      # VPK 导出和压缩
+│       └── storage_service.py         # 用户偏好存储
+│
+├── scripts/                       # 自动化脚本
+│   ├── build-frontend.ps1         # 构建前端
+│   ├── package-nuitka.ps1         # Nuitka 打包
+│   └── dev.ps1                    # 启动开发环境
+│
+├── .vscode/
+│   ├── launch.json                # VS Code 调试配置
+│   └── tasks.json                 # VS Code 任务配置
+│
+└── .github/
+    └── copilot-instructions.md    # GitHub Copilot 开发指南
+```
+
+## 前后端通信
+
+应用采用 **PyWebView API 桥接** 模式进行前后端通信：
+
+### 后端 API（Python）
+
+`backend/api.py` 中的 `VpkManagerApi` 类的公共方法自动暴露为前端可调用的 API：
+
+```python
+class VpkManagerApi:
+    async def scan_vpk_files(self, directory: str) -> dict
+    async def export_vpks(self, file_paths: List[str], output_dir: str) -> dict
+    def delete_vpk_file(self, file_path: str, disable: bool = True) -> dict
+    # ... 更多方法
+```
+
+### 前端调用（JavaScript）
+
+```typescript
+// 扫描 VPK 文件
+const result = await window.api.scan_vpk_files('/path/to/l4d2')
+
+// 导出文件
+const exportResult = await window.api.export_vpks(
+    ['/path/to/vpk1.vpk', '/path/to/vpk2.vpk'],
+    '/home/user/Downloads'
+)
+
+// 删除文件
+const deleteResult = await window.api.delete_vpk_file(
+    '/path/to/vpk.vpk',
+    true  // 禁用而不是删除
+)
+```
+
+## 国际化
+
+应用支持英文和简体中文，翻译存储在 JSON 文件中：
+
+- `frontend/src/i18n/locales/en.json` - 英文翻译
+- `frontend/src/i18n/locales/zh.json` - 中文翻译
+
+在 Vue 模板中使用：
+
+```vue
+<template>
+  <h1>{{ $t('appTitle') }}</h1>
+  <p>{{ $t('error', { error: 'File not found' }) }}</p>
+</template>
+```
+
+## VS Code 快捷键和任务
+
+### 调试快捷键
+
+- `F5` - 启动复合调试配置（前端 + 后端同时运行）
+- `Ctrl+Shift+D` - 打开调试面板
+
+### 任务快捷键
+
+- `Ctrl+Shift+B` - 运行默认构建任务（通常是构建前端）
+
+### 自定义任务
+
+运行 `Ctrl+Shift+P` 然后选择 "Tasks: Run Task"：
+
+- `Frontend: Start Dev Server` - 启动 Vite dev server
+- `Build: Nuitka Compile (Single File)` - Nuitka 打包
+- `Dev: Start Full Environment` - 完整开发环境
+
+## 开发工作流
+
+### 添加新的 API 方法
+
+1. 在 `backend/api.py` 的 `VpkManagerApi` 类中添加方法
+2. 方法会自动通过 `window.api` 暴露给前端
+
+```python
+class VpkManagerApi:
+    def my_new_method(self, param: str) -> dict:
+        return {
+            "success": True,
+            "data": result
+        }
+```
+
+3. 在前端调用：
+
+```typescript
+const result = await window.api.my_new_method('value')
+```
+
+### 添加新的 Vue 组件
+
+1. 创建 `frontend/src/components/MyComponent.vue`
+2. 在父组件中导入：
+
+```vue
+<script setup>
+import MyComponent from '@/components/MyComponent.vue'
+</script>
+
+<template>
+  <MyComponent />
+</template>
+```
+
+### 添加翻译
+
+1. 在 `frontend/src/i18n/locales/en.json` 和 `zh.json` 中添加键值对
+2. 在模板中使用 `{{ $t('keyName') }}`
+
+## 常见问题
+
+### Q: 如何修改应用窗口大小？
+
+**A:** 编辑 `main.py` 中的 `webview.create_window()` 参数：
+
+```python
+window = webview.create_window(
+    title='L4D2 VPK Manager',
+    url='http://localhost:5173',
+    width=1400,      # 修改宽度
+    height=900,      # 修改高度
+    resizable=True   # 允许用户调整大小
+)
+```
+
+### Q: 如何在开发时修改 Python 代码而无需重启应用？
+
+**A:** 使用 Python 的自动重新加载工具：
+
+```bash
+pip install watchdog
+python -m watchdog.auto_reload main.py
+```
+
+### Q: 生成的 .exe 文件为什么这么大？
+
+**A:** Nuitka 将整个 Python 运行时和所有依赖嵌入到单一文件中。这是独立可执行文件的权衡。可以通过以下方式优化：
+
+- 移除不必要的依赖
+- 使用 `--follow-imports` 仅包含使用的模块
+- 启用数据压缩选项
+
+## 配置文件
+
+### `environment.yml`
+
+Conda 环境配置，包含 Python 3.12、Node.js 和所有依赖。
+
+### `requirements.txt`
+
+Python 包依赖列表，包括 PyWebView、Nuitka、VPK 库等。
+
+### `frontend/vite.config.js`
+
+Vite 构建工具配置，定义开发服务器端口、输出目录等。
+
+### `.vscode/launch.json`
+
+VS Code 调试配置，支持 Python 和 Node.js 调试。
+
+### `.vscode/tasks.json`
+
+VS Code 任务配置，自动化构建和启动脚本。
+
+## 贡献指南
+
+欢迎提交问题和拉取请求！
+
+## 许可证
+
+MIT License - 详见 LICENSE 文件
+
+## 相关项目
+
+- [原始 Flet 版本](../hotpotfish_l4d2_vpk_manager/) - 基于 Flet GUI 框架的版本
+
+---
+
+**最后更新：** 2026年1月21日
