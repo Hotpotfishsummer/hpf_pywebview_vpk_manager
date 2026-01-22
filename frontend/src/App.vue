@@ -119,13 +119,13 @@
             <p>请选择包含 VPK 文件的目录</p>
           </div>
         </section>
+
+        <!-- Footer Moved Inside -->
+        <footer class="app-footer">
+          <p class="footer-text">© 2026 L4D2 VPK Manager • Powered by Vue3 + PyWebView</p>
+        </footer>
       </div>
     </main>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-      <p class="footer-text">© 2026 L4D2 VPK Manager • Powered by Vue3 + PyWebView</p>
-    </footer>
   </div>
 </template>
 
@@ -472,7 +472,6 @@ function switchLanguage(lang: string) {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 60px;
 }
 
 .main-wrapper {
@@ -480,11 +479,19 @@ function switchLanguage(lang: string) {
   margin: 0 auto;
   padding: 24px;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
 }
 
 /* Sections */
 .directory-section {
   margin-bottom: 24px;
+}
+
+.files-section {
+  flex: 1;
+  margin-top: 20px;
 }
 
 .action-buttons {
@@ -667,12 +674,11 @@ function switchLanguage(lang: string) {
 
 /* Footer */
 .app-footer {
-  background: rgba(15, 23, 42, 0.6);
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
-  padding: 16px 24px;
+  margin-top: 40px;
+  padding: 24px 0;
   text-align: center;
-  position: relative;
-  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  width: 100%;
 }
 
 .footer-text {

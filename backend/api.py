@@ -11,6 +11,7 @@ from pathlib import Path
 from .models import ApiResponse, VpkFile
 from .services.vpk_metadata_service import VpkMetadataService
 from .services.vpk_export_service import VpkExportService
+from .services.vpk_import_service import VpkImportService
 from .services.storage_service import StorageService
 
 # 确保存储目录存在
@@ -18,14 +19,16 @@ STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
 STORAGE_BASE_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = STORAGE_BASE_DIR / 'vpk_manager.log'
 
+# 安全地初始化日志处理器，通常 main.py 已经配置过了，但这里也做一层保护
+handlers = [logging.FileHandler(LOG_FILE, encoding='utf-8')]
+if sys.stdout is not None:
+    handlers.append(logging.StreamHandler(sys.stdout))
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding='utf-8'),
-        logging.StreamHandler(sys.stdout),
-    ]
+    handlers=handlers
 )
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,7 @@ class VpkManagerApi:
         'get_downloads_directory',
         'scan_vpk_files',
         'export_vpks',
+        'import_compressed_vpks',
         'delete_vpk_file',
         'delete_multiple_vpk_files',
         'log_from_js',
@@ -52,6 +56,8 @@ class VpkManagerApi:
         logger.info("  - VpkMetadataService 初始化完成")
         self.export_service = VpkExportService()
         logger.info("  - VpkExportService 初始化完成")
+        self.import_service = VpkImportService()
+        logger.info("  - VpkImportService 初始化完成")
         self.storage_service = StorageService()
         logger.info("  - StorageService 初始化完成")
         self._is_scanning = False
@@ -407,6 +413,45 @@ class VpkManagerApi:
 
         except Exception as e:
             logger.error(f"Error deleting multiple VPK files: {e}")
+            return {"success": False, "error": str(e)}
+
+    def import_compressed_vpks(self) -> dict:
+        """打开文件对话框选择压缩包，并导入其中的 VPK。"""
+        try:
+            if not self._window:
+                return {"success": False, "error": "WebView 窗口未就绪"}
+
+            # 获取当前 L4D2 目录以确定 addons 文件夹
+            l4d2_dir = self.storage_service.get_l4d2_directory()
+            if not l4d2_dir:
+                return {"success": False, "error": "请先选择 L4D2 安装目录"}
+
+            addons_dir = os.path.join(l4d2_dir, "left4dead2", "addons")
+            if not os.path.exists(addons_dir):
+                return {"success": False, "error": f"addons 目录不存在: {addons_dir}"}
+
+            # 1. 选择文件
+            file_types = ('Addon Archives (*.zip;*.7z;*.zst)', 'All files (*.*)')
+            result = self._window.create_file_dialog(
+                webview.OPEN_DIALOG,
+                allow_multiple=True,
+                file_types=file_types
+            )
+
+            if not result:
+                return {"success": True, "message": "用户取消了选择", "imported_count": 0}
+
+            # 2. 调用导入服务
+            import_result = self.import_service.import_compressed_files(result, addons_dir)
+            
+            # 如果成功，自动重新扫描一下
+            if import_result.get("success") or import_result.get("imported_count", 0) > 0:
+                logger.info(f"导入完成，成功导入了 {import_result.get('imported_count')} 个压缩包中的文件")
+
+            return import_result
+
+        except Exception as e:
+            logger.error(f"导入压缩包出错: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
 
     @staticmethod

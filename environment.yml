@@ -11,6 +11,7 @@ dependencies:
     - pywebview==5.0
     - vpk>=1.4.0
     - zstandard>=0.21.0
+    - py7zr>=0.21.0
     - requests>=2.32.5
     - python-dotenv>=1.2.1
     - Nuitka>=1.8.0

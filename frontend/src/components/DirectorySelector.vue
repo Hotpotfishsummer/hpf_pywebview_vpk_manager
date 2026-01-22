@@ -14,6 +14,16 @@
       </div>
       <div class="button-group">
         <button 
+          @click="handleImport"
+          :disabled="!store.currentDirectory || store.isImporting"
+          class="btn btn-import"
+          :class="{ 'btn-loading': store.isImporting }"
+          :title="!store.currentDirectory ? '请先选择 L4D2 目录' : $t('importFiles')"
+        >
+          <span v-if="store.isImporting" class="btn-spinner"></span>
+          <span class="btn-text">{{ store.isImporting ? $t('importing') : $t('importFiles') }}</span>
+        </button>
+        <button 
           @click="handleBrowse" 
           :disabled="isLoading"
           class="btn btn-browse"
@@ -34,6 +44,27 @@ import { ref } from 'vue'
 
 const store = useVpkManagerStore()
 const isLoading = ref(false)
+
+async function handleImport() {
+  if (store.isImporting || !store.currentDirectory) return
+  
+  try {
+    const result = await store.importVpks()
+    if (result && result.success) {
+      // 成功提示可以使用 i18n
+      // 这里简便起见可以设置 errorMessage 为成功消息（虽然名字叫 error）
+      store.errorMessage = `成功导入了 ${result.imported_count} 个压缩包中的文件`
+      // 3秒后清除成功消息
+      setTimeout(() => {
+        if (store.errorMessage === `成功导入了 ${result.imported_count} 个压缩包中的文件`) {
+          store.errorMessage = ''
+        }
+      }, 3000)
+    }
+  } catch (error) {
+    console.error('导入失败:', error)
+  }
+}
 
 async function handleBrowse() {
   if (isLoading.value) return
@@ -115,25 +146,49 @@ async function handleBrowse() {
   border-color: rgba(59, 130, 246, 0.5);
 }
 
-.btn-browse {
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   white-space: nowrap;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-import {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.btn-import:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-browse {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
 .btn-browse:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .btn-loading {

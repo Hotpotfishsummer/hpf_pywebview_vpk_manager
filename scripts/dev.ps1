@@ -1,56 +1,74 @@
-# Development environment startup script
-# Starts frontend dev server and backend Python app in parallel
-# Usage: .\scripts\dev.ps1
+# 开发环境启动脚本
+# 同时并行启动前端开发服务器和后端 Python 应用
+# 使用方法: .\scripts\dev.ps1
 
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptPath
 $frontendDir = Join-Path $projectRoot "frontend"
 
-Write-Host "L4D2 VPK Manager - Development Environment" -ForegroundColor Cyan
+Write-Host "L4D2 VPK 管理器 - 开发环境" -ForegroundColor Cyan
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check if conda environment is activated
-$condaEnv = $env:CONDA_DEFAULT_ENV
-if (-not $condaEnv) {
-    Write-Host "WARNING: No Conda environment activated!" -ForegroundColor Yellow
-    Write-Host "Run: conda activate hpf-vpk-manager-pywebview" -ForegroundColor Yellow
-    Write-Host ""
+# 确保使用正确的 Conda 环境
+$targetEnv = "hpf-vpk-manager-pywebview"
+if ($env:CONDA_DEFAULT_ENV -ne $targetEnv) {
+    Write-Host "正在尝试激活 Conda 环境: $targetEnv..." -ForegroundColor Yellow
+    
+    # 尝试直接激活
+    try {
+        conda activate $targetEnv
+    } catch {
+        # 如果失败，尝试初始化 Conda 钩子再激活
+        try {
+            conda shell.powershell hook | Out-String | Invoke-Expression
+            conda activate $targetEnv
+        } catch {
+            Write-Host "自动激活失败，请手动运行 'conda activate $targetEnv' 后再执行脚本。" -ForegroundColor Red
+            exit 1
+        }
+    }
+    
+    if ($env:CONDA_DEFAULT_ENV -ne $targetEnv) {
+        Write-Host "无法切换到环境 $targetEnv，请检查该环境是否存在。" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "环境已成功激活!" -ForegroundColor Green
 }
 
-Write-Host "Starting development environment..." -ForegroundColor Green
-Write-Host "Press Ctrl+C to stop all services" -ForegroundColor Yellow
+Write-Host "正在启动开发环境..." -ForegroundColor Green
+Write-Host "按 Ctrl+C 停止所有服务" -ForegroundColor Yellow
 Write-Host ""
 
-# Install frontend dependencies if needed
+# 如果有需要，安装前端依赖
 if (-not (Test-Path "$frontendDir/node_modules")) {
-    Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
+    Write-Host "正在安装前端依赖..." -ForegroundColor Yellow
     Push-Location $frontendDir
     npm install
     Pop-Location
     Write-Host ""
 }
 
-# Start frontend dev server in background
-Write-Host "Starting Vite dev server (http://localhost:5173)..." -ForegroundColor Cyan
+# 在后台启动前端开发服务器
+Write-Host "正在启动 Vite 开发服务器 (http://localhost:5173)..." -ForegroundColor Cyan
 $frontendProcess = Start-Process -FilePath "npm" `
     -ArgumentList "run dev" `
     -WorkingDirectory $frontendDir `
     -PassThru `
     -NoNewWindow
 
-Write-Host "Starting Python backend (PyWebView)..." -ForegroundColor Cyan
+Write-Host "正在启动 Python 后端 (PyWebView)..." -ForegroundColor Cyan
 
-# Start backend
+# 启动后端
 Push-Location $projectRoot
 $env:PYWEBVIEW_DEV = "true"
 python main.py
 Pop-Location
 
-# Clean up processes on exit
-Write-Host "Stopping services..." -ForegroundColor Yellow
+# 退出时清理进程
+Write-Host "正在停止服务..." -ForegroundColor Yellow
 if ($frontendProcess -and -not $frontendProcess.HasExited) {
     Stop-Process -InputObject $frontendProcess -Force
 }
 
-Write-Host "Development environment stopped." -ForegroundColor Green
+Write-Host "开发环境已停止。" -ForegroundColor Green

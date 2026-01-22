@@ -22,6 +22,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   const isScanning = ref(false)
   const isExporting = ref(false)
   const isDeleting = ref(false)
+  const isImporting = ref(false)
   const useBetterNaming = ref(true) // 默认开启
   const errorMessage = ref<string>('')
 
@@ -92,6 +93,34 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       errorMessage.value = `Scan error: ${error}`
     } finally {
       isScanning.value = false
+    }
+  }
+
+  async function importVpks() {
+    if (!currentDirectory.value) {
+      errorMessage.value = '请先选择 L4D2 安装目录'
+      return
+    }
+
+    isImporting.value = true
+    errorMessage.value = ''
+
+    try {
+      const result = await (window as any).pywebview.api.import_compressed_vpks()
+
+      if (result.success) {
+        // 导入成功，刷新列表
+        await scanVpks(currentDirectory.value)
+        return result
+      } else {
+        errorMessage.value = result.error || '导入失败'
+        return result
+      }
+    } catch (error) {
+      errorMessage.value = `导入错误: ${error}`
+      throw error
+    } finally {
+      isImporting.value = false
     }
   }
 
@@ -201,6 +230,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     isScanning,
     isExporting,
     isDeleting,
+    isImporting,
+    useBetterNaming,
     errorMessage,
     toggleLocalVpkSelection,
     toggleWorkshopVpkSelection,
@@ -211,6 +242,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     getSelectedVpkPaths,
     clearError,
     scanVpks,
+    importVpks,
     initialize,
     exportVpks,
     deleteVpks,
