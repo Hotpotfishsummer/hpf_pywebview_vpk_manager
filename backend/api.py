@@ -7,6 +7,7 @@ import re
 import shutil
 import sys
 import webview
+import webbrowser
 from typing import List, Optional
 from pathlib import Path
 
@@ -61,6 +62,7 @@ class VpkManagerApi:
         'rename_remote_vpk',
         'download_remote_vpks',
         'upload_local_vpks',
+        'open_external_url',
     }
 
     def __init__(self):
@@ -122,6 +124,14 @@ class VpkManagerApi:
         except Exception as e:
             logger.error(f"获取上次目录出错: {e}")
             return ""
+
+    def open_external_url(self, url: str) -> None:
+        """在系统默认浏览器中打开外部链接。"""
+        try:
+            logger.info(f"正在打开外部链接: {url}")
+            webbrowser.open(url)
+        except Exception as e:
+            logger.error(f"打开外部链接出错: {e}")
 
     def get_sftp_settings(self) -> dict:
         """获取 SFTP 设置。"""
@@ -260,15 +270,25 @@ class VpkManagerApi:
                 if better_naming:
                     title = self.metadata_service.get_addontitle(l_path)
                     if title:
+                        # 尝试从原始文件名中提取数字 ID (8位或以上)
+                        # 为了兼容性，先在原始文件名中找 ID
+                        id_match = re.search(r'(\d{8,})', src_path.name)
+                        workshop_id = id_match.group(1) if id_match else ""
+
                         # 清洗非法字符并替换空格
                         custom_title = title.replace(" ", "_").strip()
                         illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
                         base_name = re.sub(illegal_pattern, '_', custom_title)
                         # 连续下划线合并
                         base_name = re.sub(r'_{2,}', '_', base_name)
+                        
                         # 如果清理后变为空（纯非法字符），回退到原 stem
                         if not base_name.strip('_'):
                             base_name = src_path.stem
+                        
+                        # 如果找到了 ID 且新文件名中还不包含这个 ID，则追加它
+                        if workshop_id and workshop_id not in base_name:
+                            base_name = f"{base_name}-{workshop_id}"
                 
                 # 远程 VPK 文件名
                 suffix = ".vpk.disabled" if is_disabled else ".vpk"
@@ -280,20 +300,45 @@ class VpkManagerApi:
                     success_count += 1
                     
                     # 尝试上传关联图片
-                    src_stem = src_path.stem
-                    if is_disabled:
-                        # 如果是 .vpk.disabled，src_path.stem 会包含 .vpk
-                        if src_stem.lower().endswith('.vpk'):
-                            src_stem = src_stem[:-4]
-
                     src_parent = src_path.parent
-                    for ext in image_exts:
-                        for img_src in [src_parent / f"{src_stem}{ext}", src_parent / f"{src_stem}{ext.upper()}"]:
-                            if img_src.exists() and img_src.is_file():
-                                # 图片也按照 VPK 的新名称命名，但保留原本后缀
-                                remote_img_name = f"{base_name}{img_src.suffix}"
-                                r_img_path = os.path.join(remote_addons_path, remote_img_name).replace('\\', '/')
-                                self.sftp_service.upload_file(config, str(img_src), r_img_path)
+                    
+                    # 确定用于匹配图片的源文件 stem
+                    matching_stem = src_path.stem
+                    if is_disabled and matching_stem.lower().endswith('.vpk'):
+                        matching_stem = matching_stem[:-4]
+                    matching_stem_lower = matching_stem.lower()
+                    
+                    try:
+                        # 获取目录下所有文件，以处理大小写不敏感的文件系统匹配问题
+                        # 避免在 Windows 上重复上传 file.jpg 和 file.JPG
+                        local_files = os.listdir(src_parent)
+                        uploaded_exts_lower = set()
+
+                        for f_name in local_files:
+                            f_path = src_parent / f_name
+                            if not f_path.is_file():
+                                continue
+                            
+                            # 获取真实的文件 stem 和扩展名
+                            f_ext = f_path.suffix
+                            f_ext_lower = f_ext.lower()
+                            f_stem = f_path.stem
+                            
+                            # 处理 .vpk.disabled 文件的 stem
+                            if f_stem.lower().endswith('.vpk'):
+                                f_stem = f_stem[:-4]
+                            
+                            # 匹配基础文件名（忽略大小写）和扩展名
+                            if f_stem.lower() == matching_stem_lower and f_ext_lower in image_exts:
+                                # 每种扩展名（如 .jpg）即使在 Windows 上由于某种原因被匹配多次，也只上传一次
+                                if f_ext_lower not in uploaded_exts_lower:
+                                    # 保持远程文件的后缀与本地实际显示的后缀一致
+                                    remote_img_name = f"{base_name}{f_ext}"
+                                    r_img_path = os.path.join(remote_addons_path, remote_img_name).replace('\\', '/')
+                                    if self.sftp_service.upload_file(config, str(f_path), r_img_path):
+                                        uploaded_exts_lower.add(f_ext_lower)
+                    except Exception as img_e:
+                        logger.error(f"上传关联图片时出错: {img_e}")
             
             return {"success": True, "uploaded_count": success_count}
         except Exception as e:
@@ -672,6 +717,15 @@ class VpkManagerApi:
                             os.remove(new_path)
                         os.rename(file_path, new_path)
                     else:
+                        # 同时也删除关联的图片文件
+                        parent_dir = os.path.dirname(file_path)
+                        base_stem = os.path.splitext(file_path)[0]
+                        # 检查多种扩展名
+                        for ext in ['.jpg', '.png', '.jpeg', '.txt']:
+                            img_path = base_stem + ext
+                            if os.path.exists(img_path):
+                                os.remove(img_path)
+
                         os.remove(file_path)
 
                     success_count += 1
@@ -747,6 +801,12 @@ class VpkManagerApi:
             if not os.path.exists(addons_dir):
                 os.makedirs(addons_dir, exist_ok=True)
 
+            # 在创意工坊文件夹下创建 .trash 文件夹
+            workshop_base_dir = os.path.join(l4d2_dir, "left4dead2", "addons", "workshop")
+            trash_dir = os.path.join(workshop_base_dir, ".trash")
+            if not os.path.exists(trash_dir):
+                os.makedirs(trash_dir, exist_ok=True)
+
             success_count = 0
             errors = []
 
@@ -754,16 +814,24 @@ class VpkManagerApi:
 
             for src_path_str in file_paths:
                 try:
-                    src_path = Path(src_path_str)
+                    src_path = Path(src_path_str).absolute()
                     if not src_path.exists():
                         errors.append(f"文件不存在: {src_path.name}")
                         continue
+
+                    # 检查该文件是否确实在创意工坊目录下 (防止非预期移动)
+                    # 使用 Path 对象的部分匹配更健壮
+                    is_in_workshop = "workshop" in [p.name.lower() for p in src_path.parents]
 
                     # 基础名称处理
                     base_name = src_path.stem
                     if better_naming:
                         vpk_meta = self.metadata_service.get_vpk_metadata(src_path_str)
                         if vpk_meta and vpk_meta.addontitle:
+                            # 尝试从原始文件名中提取数字 ID (8位或以上)
+                            id_match = re.search(r'(\d{8,})', src_path.name)
+                            workshop_id = id_match.group(1) if id_match else ""
+
                             # 清洗非法字符并替换空格
                             # 先将空格替换为下划线，再移除 Windows 不允许的文件名字符
                             custom_title = vpk_meta.addontitle.replace(" ", "_").strip()
@@ -771,29 +839,61 @@ class VpkManagerApi:
                             base_name = re.sub(illegal_pattern, '_', custom_title)
                             # 连续下划线合并
                             base_name = re.sub(r'_{2,}', '_', base_name)
+                            
                             # 如果清理后变为空（纯非法字符），回退到原 stem
                             if not base_name.strip('_'):
                                 base_name = src_path.stem
+                            
+                            # 如果找到了 ID 且新文件名中还不包含这个 ID，则追加它
+                            if workshop_id and workshop_id not in base_name:
+                                base_name = f"{base_name}-{workshop_id}"
 
                     # 目标 VPK 路径
                     dest_vpk = Path(addons_dir) / f"{base_name}.vpk"
                     
-                    # 复制 VPK
+                    # 复制 VPK 到 addons (如果是禁用状态的文件，这里也统一恢复为 .vpk)
                     shutil.copy2(src_path, dest_vpk)
                     
-                    # 尝试复制并重命名同名图片
+                    # 尝试复制并重命名同名图片到 addons
                     src_stem = src_path.stem
                     src_parent = src_path.parent
+                    associated_files = [] # 记录关联文件路径用于后续移动
+
                     for ext in image_exts:
                         for img_src in [src_parent / f"{src_stem}{ext}", src_parent / f"{src_stem}{ext.upper()}"]:
                             if img_src.exists() and img_src.is_file():
                                 # 图片也按照 VPK 的新名称命名，但保留原本后缀
                                 dest_img = Path(addons_dir) / f"{base_name}{img_src.suffix}"
                                 shutil.copy2(img_src, dest_img)
+                                associated_files.append(img_src)
+                    
+                    # 本地化成功后，移动创意工坊下的原文件到 .trash
+                    if is_in_workshop:
+                        # 移动 VPK (确保目标文件不存在，如果存在先尝试删除)
+                        trash_vpk_path = os.path.join(trash_dir, src_path.name)
+                        if os.path.exists(trash_vpk_path):
+                            try:
+                                os.remove(trash_vpk_path)
+                            except:
+                                pass
+                        
+                        if src_path.exists():
+                            shutil.move(str(src_path), trash_vpk_path)
+                        
+                        # 移动关联图片
+                        for img_path in associated_files:
+                            if img_path.exists():
+                                trash_img_path = os.path.join(trash_dir, img_path.name)
+                                if os.path.exists(trash_img_path):
+                                    try:
+                                        os.remove(trash_img_path)
+                                    except:
+                                        pass
+                                shutil.move(str(img_path), trash_img_path)
                     
                     success_count += 1
                 except Exception as e:
-                    errors.append(f"复制 {os.path.basename(src_path_str)} 失败: {str(e)}")
+                    errors.append(f"本地化 {os.path.basename(src_path_str)} 失败: {str(e)}")
 
             return {
                 "success": len(errors) == 0,

@@ -27,15 +27,25 @@
         <p class="file-details">
           {{ vpk.name }} · {{ formatSize(vpk.size) }}
         </p>
+        <button 
+          v-if="workshopId" 
+          @click.stop="openWorkshop" 
+          class="workshop-btn"
+          title="在 Steam 创意工坊中查看"
+        >
+          <span class="btn-icon">🌐</span>
+          打开创意工坊页面
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { VpkFile } from '@/stores/vpk-manager'
 
-defineProps<{
+const props = defineProps<{
   vpk: VpkFile
   isSelected: boolean
 }>()
@@ -43,6 +53,19 @@ defineProps<{
 defineEmits<{
   toggle: []
 }>()
+
+const workshopId = computed(() => {
+  // 匹配连续 8 位或以上的数字
+  const match = props.vpk.name.match(/\d{8,}/)
+  return match ? match[0] : null
+})
+
+async function openWorkshop() {
+  if (workshopId.value) {
+    const url = `https://steamcommunity.com/sharedfiles/filedetails/?id=${workshopId.value}`
+    await (window as any).pywebview.api.open_external_url(url)
+  }
+}
 
 function formatSize(bytes: number): string {
   const mb = bytes / (1024 * 1024)
@@ -144,6 +167,33 @@ function formatSize(bytes: number): string {
   font-size: 13px;
   color: #94a3b8;
   font-weight: 500;
+}
+
+.workshop-btn {
+  margin-top: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.workshop-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.workshop-btn .btn-icon {
+  font-size: 12px;
 }
 
 .vpk-file-item.is-disabled {

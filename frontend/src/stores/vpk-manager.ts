@@ -175,15 +175,21 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
 
       if (result.success_count > 0) {
         // 本地化成功（至少部分），刷新列表
+        selectedWorkshopVpks.clear()
         await scanVpks(currentDirectory.value)
         const type = result.success ? 'success' : 'info'
-        const msg = result.success 
+        let msg = result.success 
           ? `已成功本地化 ${result.success_count} 个文件` 
-          : `本地化完成：${result.success_count} 成功, ${result.errors.length} 失败`
+          : `本地化完成：${result.success_count} 成功`
+        
+        if (result.errors && result.errors.length > 0) {
+          msg += `，${result.errors.length} 失败`
+        }
         showNotification(msg, type)
         return result
       } else {
-        showNotification(result.error || '本地化失败', 'error')
+        const errorMsg = result.error || (result.errors && result.errors.length > 0 ? result.errors[0] : '本地化失败')
+        showNotification(errorMsg, 'error')
         return result
       }
     } catch (error) {

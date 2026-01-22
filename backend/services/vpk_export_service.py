@@ -69,16 +69,27 @@ class VpkExportService:
                     # 确定导出后的基础文件名
                     base_name = vpk_path.stem
                     if better_naming and titles and i < len(titles) and titles[i]:
+                        # 尝试从原始文件名中提取数字 ID (8位或以上)
+                        id_match = re.search(r'(\d{8,})', vpk_path.name)
+                        workshop_id = id_match.group(1) if id_match else ""
+
                         # 使用 addontitle 并去除空格和非法字符
                         custom_title = titles[i]
                         # 移除空格，替换为下划线，并处理其他非法字符
-                        custom_title = custom_title.replace(" ", "_")
-                        # 复用 _generate_archive_name 中的清洗逻辑逻辑（其实可以抽出来的，这里简单处理下）
+                        custom_title = custom_title.replace(" ", "_").strip()
+                        # 复用清洗逻辑
                         illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
                         base_name = re.sub(illegal_pattern, '_', custom_title)
+                        # 连续下划线合并
+                        base_name = re.sub(r'_{2,}', '_', base_name)
+                        
                         # 确保不为空
-                        if not base_name.strip():
+                        if not base_name.strip('_'):
                             base_name = vpk_path.stem
+                        
+                        # 如果找到了 ID 且新文件名中还不包含这个 ID，则追加它
+                        if workshop_id and workshop_id not in base_name:
+                            base_name = f"{base_name}-{workshop_id}"
 
                     # Copy VPK file
                     if vpk_path.exists():
@@ -89,20 +100,31 @@ class VpkExportService:
                         # 同时检查并复制同名的图片文件 (缩略图)
                         # 常见的图片扩展名
                         image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
-                        vpk_stem = vpk_path.stem
+                        vpk_stem_lower = vpk_path.stem.lower()
                         vpk_parent = vpk_path.parent
                         
-                        for ext in image_exts:
-                            # 尝试匹配各种大小写的扩展名
-                            for img_path in [vpk_parent / f"{vpk_stem}{ext}", vpk_parent / f"{vpk_stem}{ext.upper()}"]:
-                                if img_path.exists() and img_path.is_file():
-                                    # 保持与 VPK 新名字一致的标题，但保留图片原本的后缀名
-                                    img_ext = img_path.suffix
-                                    img_dest = temp_dir / f"{base_name}{img_ext}"
-                                    print(f"export_vpks: copying associated image {img_path} to {img_dest}")
-                                    shutil.copy2(img_path, img_dest)
-                                    # 找到一个即可，通常同名图片只有一个
-                                    break
+                        try:
+                            # 扫描目录下所有文件以处理大小写匹配（Windows）
+                            local_files = os.listdir(vpk_parent)
+                            copied_exts_lower = set()
+
+                            for f_name in local_files:
+                                f_path = vpk_parent / f_name
+                                if not f_path.is_file():
+                                    continue
+                                
+                                f_ext = f_path.suffix
+                                f_ext_lower = f_ext.lower()
+                                f_stem_lower = f_path.stem.lower()
+
+                                if f_stem_lower == vpk_stem_lower and f_ext_lower in image_exts:
+                                    if f_ext_lower not in copied_exts_lower:
+                                        img_dest = temp_dir / f"{base_name}{f_ext}"
+                                        print(f"export_vpks: copying associated image {f_path} to {img_dest}")
+                                        shutil.copy2(f_path, img_dest)
+                                        copied_exts_lower.add(f_ext_lower)
+                        except Exception as img_e:
+                            print(f"export_vpks: error scanning associated images: {img_e}")
 
                 # Create tar.zst archive with zstandard compression
                 print(f"export_vpks: creating zstandard compressed archive with high compression")
