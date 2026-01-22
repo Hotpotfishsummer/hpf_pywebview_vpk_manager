@@ -100,11 +100,15 @@ class VpkMetadataService:
         try:
             for line in addoninfo_content.split('\n'):
                 line = line.strip()
-                if line.startswith('addontitle'):
+                if line.lower().startswith('"addontitle"') or line.lower().startswith('addontitle'):
                     # 提取引号之间的值
-                    # 格式: addontitle "value"
+                    # 格式: addontitle "value" 或 "addontitle" "value"
                     parts = line.split('"')
-                    if len(parts) >= 2:
+                    # 如果格式是 addontitle "value"，parts[1] 就是 value
+                    # 如果格式是 "addontitle" "value"，parts[3] 就是 value
+                    if len(parts) >= 4:
+                        return parts[3]
+                    elif len(parts) >= 2:
                         return parts[1]
             return None
         except Exception as e:

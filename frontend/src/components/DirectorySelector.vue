@@ -50,16 +50,16 @@ async function handleImport() {
   
   try {
     const result = await store.importVpks()
-    if (result && result.success) {
-      // 成功提示可以使用 i18n
-      // 这里简便起见可以设置 errorMessage 为成功消息（虽然名字叫 error）
-      store.errorMessage = `成功导入了 ${result.imported_count} 个压缩包中的文件`
-      // 3秒后清除成功消息
-      setTimeout(() => {
-        if (store.errorMessage === `成功导入了 ${result.imported_count} 个压缩包中的文件`) {
-          store.errorMessage = ''
-        }
-      }, 3000)
+    if (result) {
+      if (result.imported_count > 0) {
+        const type = result.success ? 'success' : 'info'
+        const msg = result.success 
+          ? `成功导入了 ${result.imported_count} 个文件` 
+          : `导入完成：${result.imported_count} 成功, ${result.errors ? result.errors.length : 0} 失败`
+        store.showNotification(msg, type)
+      } else if (result.error) {
+        store.showNotification(`导入失败: ${result.error}`, 'error')
+      }
     }
   } catch (error) {
     console.error('导入失败:', error)
@@ -80,18 +80,17 @@ async function handleBrowse() {
     }
     
     if (!(window.pywebview && window.pywebview.api)) {
-      store.errorMessage = 'PyWebView API 未初始化，请刷新页面'
+      store.showNotification('PyWebView API 未初始化，请刷新页面', 'error')
       return
     }
     
     const selectedPath = await window.pywebview.api.browse_directory()
     
     if (selectedPath) {
-      store.errorMessage = ''
       await store.scanVpks(selectedPath)
     }
   } catch (error) {
-    store.errorMessage = `文件夹选择出错: ${error instanceof Error ? error.message : String(error)}`
+    store.showNotification(`文件夹选择出错: ${error instanceof Error ? error.message : String(error)}`, 'error')
     console.error('选择文件夹失败:', error)
   } finally {
     isLoading.value = false

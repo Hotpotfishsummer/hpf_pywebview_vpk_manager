@@ -3,6 +3,8 @@
 import asyncio
 import logging
 import os
+import re
+import shutil
 import sys
 import webview
 from typing import List, Optional
@@ -44,8 +46,11 @@ class VpkManagerApi:
         'scan_vpk_files',
         'export_vpks',
         'import_compressed_vpks',
+        'localize_workshop_vpks',
+        'open_directory',
         'delete_vpk_file',
         'delete_multiple_vpk_files',
+        'reset_app_data',
         'log_from_js',
     }
 
@@ -147,6 +152,73 @@ class VpkManagerApi:
         except Exception as e:
             logger.error(f"打开目录选择器出错: {e}", exc_info=True)
             return None
+    def open_directory(self, path: str) -> bool:
+        """在系统文件管理器中打开指定目录。"""
+        try:
+            if not path or not os.path.exists(path):
+                logger.error(f"无法打开不存在的目录: {path}")
+                return False
+            
+            # 确保是目录，如果是文件则打开其父目录
+            dir_path = path if os.path.isdir(path) else os.path.dirname(path)
+            
+            logger.info(f"正在打开文件夹: {dir_path}")
+            if sys.platform == 'win32':
+                os.startfile(dir_path)
+            elif sys.platform == 'darwin':
+                import subprocess
+                subprocess.run(['open', dir_path])
+            else:
+                import subprocess
+                subprocess.run(['xdg-open', dir_path])
+            return True
+        except Exception as e:
+            logger.error(f"打开文件夹出错: {e}")
+            return False
+
+    def reset_app_data(self) -> bool:
+        """重置应用数据，仅保留 preferences.json，删除其他所有内容并退出。"""
+        try:
+            logger.info("正在重置应用数据...")
+            
+            # 定义 STORAGE_BASE_DIR（与类外部定义的保持一致）
+            storage_dir = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
+            pref_file = storage_dir / 'preferences.json'
+            
+            if not storage_dir.exists():
+                return True
+                
+            # 遍历存储目录
+            for item in storage_dir.iterdir():
+                try:
+                    # 如果不是 preferences.json，则删除
+                    if item.name != 'preferences.json':
+                        if item.is_file():
+                            # 关闭日志文件句柄以免无法删除日志
+                            if item.name == 'vpk_manager.log':
+                                for handler in logging.root.handlers[:]:
+                                    handler.close()
+                                    logging.root.removeHandler(handler)
+                            item.unlink()
+                        elif item.is_dir():
+                            shutil.rmtree(item)
+                except Exception as e:
+                    logger.error(f"删除条目 {item} 失败: {e}")
+
+            logger.info("数据清理完成，准备退出程序。")
+            
+            # 手动触发关闭窗口
+            if self._window:
+                self._window.destroy()
+            
+            # 强制退出
+            import os
+            os._exit(0)
+            return True
+        except Exception as e:
+            # 此处可能因为日志句柄已关而无法记录
+            print(f"重置应用数据出错: {e}")
+            return False
 
     def get_downloads_directory(self) -> str:
         """获取用户下载目录。
@@ -452,6 +524,77 @@ class VpkManagerApi:
 
         except Exception as e:
             logger.error(f"导入压缩包出错: {e}", exc_info=True)
+            return {"success": False, "error": str(e)}
+
+    def localize_workshop_vpks(self, file_paths: List[str], better_naming: bool = False) -> dict:
+        """将选定的创意工坊 VPK 文件本地化（复制到 addons 目录）。"""
+        try:
+            if not file_paths:
+                return {"success": False, "error": "未选择文件"}
+
+            l4d2_dir = self.storage_service.get_l4d2_directory()
+            if not l4d2_dir:
+                return {"success": False, "error": "未找到 L4D2 目录"}
+
+            addons_dir = os.path.join(l4d2_dir, "left4dead2", "addons")
+            if not os.path.exists(addons_dir):
+                os.makedirs(addons_dir, exist_ok=True)
+
+            success_count = 0
+            errors = []
+
+            image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
+
+            for src_path_str in file_paths:
+                try:
+                    src_path = Path(src_path_str)
+                    if not src_path.exists():
+                        errors.append(f"文件不存在: {src_path.name}")
+                        continue
+
+                    # 基础名称处理
+                    base_name = src_path.stem
+                    if better_naming:
+                        vpk_meta = self.metadata_service.get_vpk_metadata(src_path_str)
+                        if vpk_meta and vpk_meta.addontitle:
+                            # 清洗非法字符并替换空格
+                            # 先将空格替换为下划线，再移除 Windows 不允许的文件名字符
+                            custom_title = vpk_meta.addontitle.replace(" ", "_").strip()
+                            illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
+                            base_name = re.sub(illegal_pattern, '_', custom_title)
+                            # 连续下划线合并
+                            base_name = re.sub(r'_{2,}', '_', base_name)
+                            # 如果清理后变为空（纯非法字符），回退到原 stem
+                            if not base_name.strip('_'):
+                                base_name = src_path.stem
+
+                    # 目标 VPK 路径
+                    dest_vpk = Path(addons_dir) / f"{base_name}.vpk"
+                    
+                    # 复制 VPK
+                    shutil.copy2(src_path, dest_vpk)
+                    
+                    # 尝试复制并重命名同名图片
+                    src_stem = src_path.stem
+                    src_parent = src_path.parent
+                    for ext in image_exts:
+                        for img_src in [src_parent / f"{src_stem}{ext}", src_parent / f"{src_stem}{ext.upper()}"]:
+                            if img_src.exists() and img_src.is_file():
+                                # 图片也按照 VPK 的新名称命名，但保留原本后缀
+                                dest_img = Path(addons_dir) / f"{base_name}{img_src.suffix}"
+                                shutil.copy2(img_src, dest_img)
+                    
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"复制 {os.path.basename(src_path_str)} 失败: {str(e)}")
+
+            return {
+                "success": len(errors) == 0,
+                "success_count": success_count,
+                "errors": errors if errors else None
+            }
+        except Exception as e:
+            logger.error(f"本地化创意工坊文件出错: {e}")
             return {"success": False, "error": str(e)}
 
     @staticmethod

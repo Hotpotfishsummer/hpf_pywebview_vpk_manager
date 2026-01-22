@@ -27,8 +27,8 @@ const waitForApi = (): Promise<void> => {
 // ============================================================
 waitForApi().then(() => {
   // 设置前端日志重定向到 Python 后端
-  if (window.pywebview && window.pywebview.api && window.pywebview.api.log_from_js) {
-    const api = window.pywebview.api;
+  const api = window.pywebview?.api;
+  if (api && typeof api.log_from_js === 'function') {
     const levels = ['log', 'info', 'warn', 'error', 'debug'] as const;
     
     levels.forEach(level => {

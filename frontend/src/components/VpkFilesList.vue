@@ -26,6 +26,13 @@
                   />
                   <span>{{ allLocalSelected ? $t('deselectAll') : $t('selectAll') }}</span>
                 </label>
+                <button 
+                  class="action-icon-btn" 
+                  @click.stop="store.openAddonsFolder" 
+                  title="在文件管理器中打开"
+                >
+                  <span class="icon">📂</span>
+                </button>
               </div>
               <VpkFileItem
                 v-for="vpk in store.localVpkFiles"
@@ -66,6 +73,13 @@
                   />
                   <span>{{ allWorkshopSelected ? $t('deselectAll') : $t('selectAll') }}</span>
                 </label>
+                <button 
+                  class="action-icon-btn" 
+                  @click.stop="store.openWorkshopFolder" 
+                  title="在文件管理器中打开"
+                >
+                  <span class="icon">📂</span>
+                </button>
               </div>
               <VpkFileItem
                 v-for="vpk in store.workshopVpkFiles"
@@ -240,9 +254,36 @@ function toggleAllWorkshop() {
 }
 
 .list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding-bottom: 14px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.15);
   margin-bottom: 14px;
+}
+
+.action-icon-btn {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-icon-btn:hover {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.4);
+  transform: translateY(-1px);
+}
+
+.action-icon-btn .icon {
+  font-size: 16px;
 }
 
 .checkbox-label {

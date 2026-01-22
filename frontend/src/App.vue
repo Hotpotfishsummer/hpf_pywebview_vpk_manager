@@ -27,17 +27,57 @@
               中文
             </button>
           </div>
+          <button @click="showSettings = true" class="settings-btn" :title="$t('settings')">
+            ⚙️
+          </button>
         </div>
       </div>
     </header>
 
-    <!-- Error banner -->
+    <!-- Settings Modal -->
+    <transition name="fade">
+      <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
+        <div class="modal-content settings-modal">
+          <div class="modal-header">
+            <h2 class="modal-title">⚙️ {{ $t('settingsTitle') }}</h2>
+            <button class="modal-close" @click="showSettings = false">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="settings-section">
+              <h3 class="section-subtitle">{{ $t('generalSettings') }}</h3>
+              <div class="settings-item action-item">
+                <div class="setting-text">
+                  <span class="setting-title">{{ $t('resetAppData') }}</span>
+                  <p class="setting-item-desc">{{ $t('resetAppDataDesc') }}</p>
+                </div>
+                <button 
+                  class="btn btn-outline" 
+                  @click="handleResetData"
+                  :disabled="isResetting"
+                >
+                  {{ isResetting ? 'Cleaning...' : 'Execute' }}
+                </button>
+              </div>
+            </div>
+            <!-- Future settings can be added here -->
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" @click="showSettings = false">{{ $t('close') }}</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Error/Success banner -->
     <transition name="slide-down">
-      <div v-if="store.errorMessage" class="error-banner">
-        <div class="error-content">
-          <span class="error-icon">⚠️</span>
-          <span class="error-text">{{ store.errorMessage }}</span>
-          <button @click="store.errorMessage = ''" class="error-close">×</button>
+      <div v-if="store.notification.message" 
+           :class="['status-banner', `status-${store.notification.type}`]">
+        <div class="status-content">
+          <span class="status-icon">
+            {{ store.notification.type === 'success' ? '✅' : (store.notification.type === 'error' ? '⚠️' : 'ℹ️') }}
+          </span>
+          <span class="status-text">{{ store.notification.message }}</span>
+          <button @click="store.notification.message = ''" class="status-close">×</button>
         </div>
       </div>
     </transition>
@@ -58,6 +98,18 @@
               {{ store.isExporting ? $t('exporting') : '导出文件' }}
             </button>
             <button 
+              v-if="store.selectedWorkshopVpks.size > 0 && store.selectedLocalVpks.size === 0"
+              @click="handleLocalize"
+              :disabled="store.isLocalizing"
+              class="btn btn-localize"
+              :class="{ 'btn-loading': store.isLocalizing }"
+              :title="$t('localizeTooltip')"
+            >
+              <span class="btn-icon" v-if="!store.isLocalizing">📦</span>
+              <span class="btn-spinner" v-else></span>
+              {{ store.isLocalizing ? '正在转换...' : $t('localize') }}
+            </button>
+            <button 
               @click="handleDelete"
               :disabled="store.isDeleting"
               class="btn btn-delete"
@@ -69,8 +121,8 @@
             <!-- Better Naming Checkbox -->
             <label class="better-naming-checkbox">
               <input type="checkbox" v-model="store.useBetterNaming" />
-              <span class="checkbox-text">更好的命名</span>
-              <span class="checkbox-help" title="在压缩包内将 VPK 和图片重命名为游戏内显示的名称，并去除空格">❓</span>
+              <span class="checkbox-text">{{ $t('betterNaming') }}</span>
+              <span class="checkbox-help" :title="$t('betterNamingHelp')">❓</span>
             </label>
 
             <span class="selection-info">
@@ -143,11 +195,25 @@ const { waitForApiReady } = usePyWebViewApi()
 
 const currentLocale = computed(() => locale.value)
 const isScrolled = ref(false)
+const showSettings = ref(false)
+const isResetting = ref(false)
 
 // Handle scroll for layout changes
 function handleScroll(event: Event) {
   const target = event.target as HTMLElement
   isScrolled.value = target.scrollTop > 20
+}
+
+async function handleResetData() {
+  if (confirm($t('resetConfirm'))) {
+    try {
+      isResetting.value = true
+      await (window as any).pywebview.api.reset_app_data()
+    } catch (error) {
+      console.error('Reset failed:', error)
+      isResetting.value = false
+    }
+  }
 }
 
 // Initialize store on mount
@@ -176,18 +242,18 @@ const selectionCount = computed(() => {
 
 const selectionCountText = computed(() => {
   const count = selectionCount.value
-  return `已选择 ${count} 项`
+  return $t('selectionInfo', { count })
 })
 
 async function handleExport() {
   try {
     if (store.selectedLocalVpks.size === 0 && store.selectedWorkshopVpks.size === 0) {
-      store.errorMessage = $t('selectFiles')
+      store.showNotification($t('selectFiles'), 'error')
       return
     }
 
     if (!window.pywebview || !window.pywebview.api) {
-      store.errorMessage = $t('apiNotAvailable')
+      store.showNotification($t('apiNotAvailable'), 'error')
       return
     }
 
@@ -201,19 +267,24 @@ async function handleExport() {
       outputDir = '.'
     }
 
-    const result = await store.exportVpks(outputDir)
-    if (result && result.success) {
-      store.errorMessage = $t('exportSuccess', { path: result.file_path || outputDir })
-    }
+    await store.exportVpks(outputDir)
   } catch (error) {
-    store.errorMessage = error instanceof Error ? error.message : $t('exportError')
+    store.showNotification(error instanceof Error ? error.message : $t('exportError'), 'error')
+  }
+}
+
+async function handleLocalize() {
+  try {
+    await store.localizeVpks()
+  } catch (error) {
+    store.showNotification(error instanceof Error ? error.message : 'Localization failed', 'error')
   }
 }
 
 function handleDelete() {
   const selectedCount = selectionCount.value
   if (selectedCount === 0) {
-    store.errorMessage = $t('selectFiles')
+    store.showNotification($t('selectFiles'), 'error')
     return
   }
 
@@ -411,21 +482,62 @@ function switchLanguage(lang: string) {
   color: white;
 }
 
+.settings-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.settings-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(45deg);
+}
+
+.app-header.collapsed .settings-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+
 .lang-btn.active {
   background: rgba(255, 255, 255, 0.25);
   color: white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Error banner */
-.error-banner {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+/* Status banner */
+.status-banner {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   animation: slideDown 0.3s ease;
+  z-index: 1000;
+}
+
+.status-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.status-error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
-.error-content {
+.status-info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.status-content {
   max-width: 1200px;
   margin: 0 auto;
   padding: 14px 24px;
@@ -435,18 +547,18 @@ function switchLanguage(lang: string) {
   color: white;
 }
 
-.error-icon {
+.status-icon {
   font-size: 20px;
   flex-shrink: 0;
 }
 
-.error-text {
+.status-text {
   flex: 1;
   font-size: 14px;
   font-weight: 500;
 }
 
-.error-close {
+.status-close {
   background: rgba(255, 255, 255, 0.2);
   border: none;
   color: white;
@@ -462,7 +574,7 @@ function switchLanguage(lang: string) {
   flex-shrink: 0;
 }
 
-.error-close:hover {
+.status-close:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
 }
@@ -545,6 +657,20 @@ function switchLanguage(lang: string) {
 }
 
 .btn-delete:active:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn-localize {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: white;
+}
+
+.btn-localize:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+}
+
+.btn-localize:active:not(:disabled) {
   transform: translateY(-1px);
 }
 
@@ -785,4 +911,136 @@ function switchLanguage(lang: string) {
     align-self: flex-end;
   }
 }
+/* Modal Base */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: #1e293b;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalScale {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Settings Specific */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-item {
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.05);
+}
+
+.settings-item.action-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.setting-text {
+  flex: 1;
+}
+
+.setting-title {
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.setting-item-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #f1f5f9;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.setting-item-desc {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Fade Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
 </style>
