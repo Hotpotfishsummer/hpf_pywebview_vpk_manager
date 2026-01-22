@@ -27,6 +27,14 @@
               中文
             </button>
           </div>
+          <button 
+            @click="store.isSftpActive = !store.isSftpActive" 
+            class="sftp-toggle-btn" 
+            :class="{ active: store.isSftpActive }"
+            :title="store.isSftpActive ? '关闭 SFTP' : '开启 SFTP'"
+          >
+            🌐
+          </button>
           <button @click="showSettings = true" class="settings-btn" :title="$t('settings')">
             ⚙️
           </button>
@@ -34,39 +42,7 @@
       </div>
     </header>
 
-    <!-- Settings Modal -->
-    <transition name="fade">
-      <div v-if="showSettings" class="modal-overlay" @click.self="showSettings = false">
-        <div class="modal-content settings-modal">
-          <div class="modal-header">
-            <h2 class="modal-title">⚙️ {{ $t('settingsTitle') }}</h2>
-            <button class="modal-close" @click="showSettings = false">×</button>
-          </div>
-          <div class="modal-body">
-            <div class="settings-section">
-              <h3 class="section-subtitle">{{ $t('generalSettings') }}</h3>
-              <div class="settings-item action-item">
-                <div class="setting-text">
-                  <span class="setting-title">{{ $t('resetAppData') }}</span>
-                  <p class="setting-item-desc">{{ $t('resetAppDataDesc') }}</p>
-                </div>
-                <button 
-                  class="btn btn-outline" 
-                  @click="handleResetData"
-                  :disabled="isResetting"
-                >
-                  {{ isResetting ? 'Cleaning...' : 'Execute' }}
-                </button>
-              </div>
-            </div>
-            <!-- Future settings can be added here -->
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-primary" @click="showSettings = false">{{ $t('close') }}</button>
-          </div>
-        </div>
-      </div>
-    </transition>
+    <SettingsModal v-model:show="showSettings" />
 
     <!-- Error/Success banner -->
     <transition name="slide-down">
@@ -110,12 +86,39 @@
               {{ store.isLocalizing ? '正在转换...' : $t('localize') }}
             </button>
             <button 
+              v-if="store.isSftpActive && (store.selectedLocalVpks.size > 0 || store.selectedWorkshopVpks.size > 0)"
+              @click="store.uploadLocalVpks"
+              :disabled="store.isUploading"
+              class="btn btn-upload"
+              :class="{ 'btn-loading': store.isUploading }"
+            >
+              <span class="btn-icon" v-if="!store.isUploading">☁️</span>
+              <span class="btn-spinner" v-else></span>
+              {{ store.isUploading ? $t('uploading') : $t('uploadToSftp') }}
+            </button>
+            <button 
+              @click="handleDisable"
+              :disabled="store.isDeleting"
+              class="btn btn-disable"
+            >
+              <span class="btn-icon">🚫</span>
+              {{ store.isDeleting ? '处理中...' : '禁用' }}
+            </button>
+            <button 
+              @click="handleEnable"
+              :disabled="store.isDeleting"
+              class="btn btn-enable"
+            >
+              <span class="btn-icon">✔️</span>
+              {{ store.isDeleting ? '处理中...' : '启用' }}
+            </button>
+            <button 
               @click="handleDelete"
               :disabled="store.isDeleting"
               class="btn btn-delete"
             >
               <span class="btn-icon">🗑️</span>
-              {{ store.isDeleting ? '删除中...' : '删除文件' }}
+              {{ store.isDeleting ? '删除中...' : '彻底删除' }}
             </button>
 
             <!-- Better Naming Checkbox -->
@@ -142,8 +145,8 @@
     </transition>
 
     <!-- Main content -->
-    <main class="app-main" @scroll="handleScroll">
-      <div class="main-wrapper">
+    <main class="app-main" :class="{ 'split-view': store.isSftpActive }" @scroll="handleScroll">
+      <div class="main-wrapper left-panel">
         <!-- Directory selector section -->
         <section class="directory-section">
           <DirectorySelector />
@@ -177,6 +180,10 @@
           <p class="footer-text">© 2026 L4D2 VPK Manager • Powered by Vue3 + PyWebView</p>
         </footer>
       </div>
+
+      <div v-if="store.isSftpActive" class="right-panel">
+        <SftpBrowser />
+      </div>
     </main>
   </div>
 </template>
@@ -188,6 +195,8 @@ import { useI18n } from 'vue-i18n'
 import { usePyWebViewApi } from '@/composables/useApi'
 import DirectorySelector from '@/components/DirectorySelector.vue'
 import VpkFilesList from '@/components/VpkFilesList.vue'
+import SettingsModal from '@/components/SettingsModal.vue'
+import SftpBrowser from '@/components/SftpBrowser.vue'
 
 const store = useVpkManagerStore()
 const { locale, t: $t } = useI18n()
@@ -196,24 +205,11 @@ const { waitForApiReady } = usePyWebViewApi()
 const currentLocale = computed(() => locale.value)
 const isScrolled = ref(false)
 const showSettings = ref(false)
-const isResetting = ref(false)
 
 // Handle scroll for layout changes
 function handleScroll(event: Event) {
   const target = event.target as HTMLElement
   isScrolled.value = target.scrollTop > 20
-}
-
-async function handleResetData() {
-  if (confirm($t('resetConfirm'))) {
-    try {
-      isResetting.value = true
-      await (window as any).pywebview.api.reset_app_data()
-    } catch (error) {
-      console.error('Reset failed:', error)
-      isResetting.value = false
-    }
-  }
 }
 
 // Initialize store on mount
@@ -281,16 +277,36 @@ async function handleLocalize() {
   }
 }
 
-function handleDelete() {
+async function handleDisable() {
+  if (selectionCount.value === 0) return
+  const pathsToDisable = [...store.selectedLocalVpks, ...store.selectedWorkshopVpks]
+    .filter(path => !path.endsWith('.disabled'))
+  
+  if (pathsToDisable.length > 0) {
+    await store.deleteVpks(true, pathsToDisable)
+  }
+}
+
+async function handleEnable() {
+  if (selectionCount.value === 0) return
+  const pathsToEnable = [...store.selectedLocalVpks, ...store.selectedWorkshopVpks]
+    .filter(path => path.endsWith('.disabled'))
+  
+  if (pathsToEnable.length > 0) {
+    await store.deleteVpks(true, pathsToEnable)
+  }
+}
+
+async function handleDelete() {
   const selectedCount = selectionCount.value
   if (selectedCount === 0) {
     store.showNotification($t('selectFiles'), 'error')
     return
   }
 
-  const message = $t('confirmDelete') + ` (${selectedCount})`
+  const message = '确定要从磁盘彻底删除选中的 VPK 文件吗？此操作无法撤销。' + ` (${selectedCount})`
   if (confirm(message)) {
-    store.deleteVpks(true)
+    await store.deleteVpks(false)
   }
 }
 
@@ -515,6 +531,39 @@ function switchLanguage(lang: string) {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.sftp-toggle-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.sftp-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.sftp-toggle-btn.active {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.app-header.collapsed .sftp-toggle-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+
 /* Status banner */
 .status-banner {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -584,6 +633,26 @@ function switchLanguage(lang: string) {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  display: flex;
+}
+
+.app-main.split-view {
+  overflow: hidden; /* 在分屏模式下由子面板处理滚动 */
+}
+
+.left-panel {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0; /* 防止 flex 子项超出容器 */
+}
+
+.right-panel {
+  width: 400px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-wrapper {
@@ -594,6 +663,11 @@ function switchLanguage(lang: string) {
   display: flex;
   flex-direction: column;
   min-height: 100%;
+}
+
+.split-view .main-wrapper {
+  max-width: none;
+  margin: 0;
 }
 
 /* Sections */
@@ -646,17 +720,42 @@ function switchLanguage(lang: string) {
   transform: translateY(-1px);
 }
 
+.btn-upload {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #a78bfa;
+}
+
+.btn-upload:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: #8b5cf6;
+}
+
 .btn-delete {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
 }
 
-.btn-delete:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(239, 68, 68, 0.35);
+.btn-disable {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
 }
 
-.btn-delete:active:not(:disabled) {
+.btn-enable {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.btn-delete:hover:not(:disabled),
+.btn-disable:hover:not(:disabled),
+.btn-enable:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.btn-delete:active:not(:disabled),
+.btn-disable:active:not(:disabled),
+.btn-enable:active:not(:disabled) {
   transform: translateY(-1px);
 }
 
@@ -911,130 +1010,6 @@ function switchLanguage(lang: string) {
     align-self: flex-end;
   }
 }
-/* Modal Base */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-content {
-  background: #1e293b;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  animation: modalScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes modalScale {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #f1f5f9;
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.modal-close:hover {
-  color: #f1f5f9;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.modal-body {
-  padding: 24px;
-  overflow-y: auto;
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid rgba(148, 163, 184, 0.1);
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Settings Specific */
-.settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.settings-item {
-  padding: 12px;
-  background: rgba(15, 23, 42, 0.3);
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.05);
-}
-
-.settings-item.action-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.setting-text {
-  flex: 1;
-}
-
-.setting-title {
-  color: #f1f5f9;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.setting-item-label {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: #f1f5f9;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.setting-item-desc {
-  margin: 6px 0 0 0;
-  font-size: 12px;
-  color: #94a3b8;
-}
-
 /* Fade Transitions */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.3s ease;

@@ -82,3 +82,16 @@ class StorageService:
     def save_l4d2_directory(self, directory: str):
         """保存 L4D2 目录路径"""
         self.set('l4d2_directory', directory)
+
+    def get_sftp_settings(self) -> dict:
+        """获取 SFTP 设置"""
+        return self.get('sftp_settings', {
+            'address': '',
+            'username': '',
+            'password': '',
+            'addons_path': ''
+        })
+
+    def save_sftp_settings(self, settings: dict):
+        """保存 SFTP 设置"""
+        self.set('sftp_settings', settings)

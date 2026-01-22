@@ -1,5 +1,5 @@
 <template>
-  <div class="vpk-file-item">
+  <div class="vpk-file-item" :class="{ 'is-disabled': vpk.is_disabled }">
     <div class="item-content">
       <label class="checkbox-label">
         <input
@@ -144,5 +144,18 @@ function formatSize(bytes: number): string {
   font-size: 13px;
   color: #94a3b8;
   font-weight: 500;
+}
+
+.vpk-file-item.is-disabled {
+  opacity: 0.5;
+}
+
+.vpk-file-item.is-disabled .file-name {
+  text-decoration: line-through;
+  color: #64748b;
+}
+
+.vpk-file-item.is-disabled .thumbnail-container {
+  filter: grayscale(100%) brightness(0.6);
 }
 </style>

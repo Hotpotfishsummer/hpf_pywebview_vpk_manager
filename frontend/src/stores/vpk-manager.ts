@@ -24,7 +24,22 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   const isDeleting = ref(false)
   const isImporting = ref(false)
   const isLocalizing = ref(false)
+  const isSftpActive = ref(false)
+  const isRemoteScanning = ref(false)
+  const isDownloading = ref(false)
+  const isUploading = ref(false)
   const useBetterNaming = ref(true) // 默认开启
+
+  // SFTP 设置
+  const sftpSettings = reactive({
+    address: '',
+    username: '',
+    password: '',
+    addons_path: ''
+  })
+
+  const remoteVpkFiles = ref<any[]>([])
+  const selectedRemoteVpks = reactive(new Set<string>())
   
   // 消息提示状态
   const notification = reactive({
@@ -182,6 +197,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   async function initialize() {
     console.log('Initializing VpkManager store...')
     try {
+      // 加载上次目录
       const lastDir = await (window as any).pywebview.api.get_last_directory()
       if (lastDir) {
         console.log('Last directory found:', lastDir)
@@ -189,8 +205,189 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       } else {
         console.log('No last directory stored.')
       }
+
+      // 加载 SFTP 设置
+      const settings = await (window as any).pywebview.api.get_sftp_settings()
+      if (settings) {
+        Object.assign(sftpSettings, settings)
+      }
     } catch (error) {
-      console.warn('Failed to load last directory:', error)
+      console.warn('Failed to initialize settings:', error)
+    }
+  }
+
+  async function saveSftpSettings() {
+    try {
+      const result = await (window as any).pywebview.api.save_sftp_settings({ ...sftpSettings })
+      if (!result.success) {
+        showNotification(result.error || '保存 SFTP 设置失败', 'error')
+      }
+      return result
+    } catch (error) {
+      showNotification(`保存 SFTP 设置错误: ${error}`, 'error')
+      throw error
+    }
+  }
+
+  function toggleRemoteVpkSelection(path: string) {
+    if (selectedRemoteVpks.has(path)) {
+      selectedRemoteVpks.delete(path)
+    } else {
+      selectedRemoteVpks.add(path)
+    }
+  }
+
+  function selectAllRemote() {
+    remoteVpkFiles.value.forEach(vpk => {
+      selectedRemoteVpks.add(vpk.path)
+    })
+  }
+
+  function deselectAllRemote() {
+    selectedRemoteVpks.clear()
+  }
+
+  async function scanRemoteVpks() {
+    isRemoteScanning.value = true
+    try {
+      const result = await (window as any).pywebview.api.list_remote_vpks()
+      if (result.success) {
+        remoteVpkFiles.value = result.files || []
+        selectedRemoteVpks.clear() // 扫描后清除之前的选中
+      } else {
+        showNotification(result.error || '获取远程文件失败', 'error')
+      }
+    } catch (error) {
+      showNotification(`SFTP 扫描错误: ${error}`, 'error')
+    } finally {
+      isRemoteScanning.value = false
+    }
+  }
+
+  async function deleteRemoteVpk(path: string) {
+    try {
+      const result = await (window as any).pywebview.api.delete_remote_vpk(path)
+      if (result.success) {
+        showNotification('远程文件已删除', 'success')
+        await scanRemoteVpks()
+      } else {
+        showNotification(result.error || '删除远程文件失败', 'error')
+      }
+    } catch (error) {
+      showNotification(`删除远程文件错误: ${error}`, 'error')
+    }
+  }
+
+  async function deleteMultipleRemoteVpks() {
+    const paths = Array.from(selectedRemoteVpks)
+    if (paths.length === 0) return
+    
+    isDeleting.value = true
+    try {
+      const result = await (window as any).pywebview.api.delete_multiple_remote_vpks(paths)
+      if (result.success) {
+        showNotification('已删除选中的远程文件', 'success')
+      } else if (result.success_count > 0) {
+        showNotification(`删除了 ${result.success_count} 个文件，${result.error_count} 个失败`, 'info')
+      } else {
+        showNotification('删除失败', 'error')
+      }
+      await scanRemoteVpks()
+    } catch (error) {
+      showNotification(`删除错误: ${error}`, 'error')
+    } finally {
+      isDeleting.value = false
+    }
+  }
+
+  async function disableRemoteVpks() {
+    const paths = Array.from(selectedRemoteVpks).filter(p => !p.endsWith('.disabled'))
+    if (paths.length === 0) return
+    
+    isDeleting.value = true
+    try {
+      let successCount = 0
+      for (const path of paths) {
+        const result = await (window as any).pywebview.api.rename_remote_vpk(path, `${path}.disabled`)
+        if (result.success) successCount++
+      }
+      showNotification(`已禁用 ${successCount} 个文件`, 'success')
+      await scanRemoteVpks()
+    } catch (error) {
+      showNotification(`禁用错误: ${error}`, 'error')
+    } finally {
+      isDeleting.value = false
+    }
+  }
+
+  async function enableRemoteVpks() {
+    const paths = Array.from(selectedRemoteVpks).filter(p => p.endsWith('.disabled'))
+    if (paths.length === 0) return
+    
+    isDeleting.value = true
+    try {
+      let successCount = 0
+      for (const path of paths) {
+        const result = await (window as any).pywebview.api.rename_remote_vpk(path, path.substring(0, path.length - 9))
+        if (result.success) successCount++
+      }
+      showNotification(`已启用 ${successCount} 个文件`, 'success')
+      await scanRemoteVpks()
+    } catch (error) {
+      showNotification(`启用错误: ${error}`, 'error')
+    } finally {
+      isDeleting.value = false
+    }
+  }
+
+  async function downloadRemoteVpks() {
+    const paths = Array.from(selectedRemoteVpks)
+    if (paths.length === 0) return
+    
+    isDownloading.value = true
+    showNotification('正在下载远程文件...', 'info')
+    try {
+      const result = await (window as any).pywebview.api.download_remote_vpks(paths)
+      if (result.success) {
+        showNotification(`成功下载了 ${result.downloaded_count} 个文件`, 'success')
+        // 刷新本地列表
+        if (currentDirectory.value) {
+          await scanVpks(currentDirectory.value)
+        }
+      } else {
+        showNotification(result.error || '下载失败', 'error')
+      }
+    } catch (error) {
+      showNotification(`下载错误: ${error}`, 'error')
+    } finally {
+      isDownloading.value = false
+    }
+  }
+
+  async function uploadLocalVpks() {
+    const paths = getSelectedVpkPaths()
+    if (paths.length === 0) return
+    
+    isUploading.value = true
+    showNotification('正在上传文件到服务器...', 'info')
+    try {
+      const result = await (window as any).pywebview.api.upload_local_vpks(
+        paths, 
+        useBetterNaming.value
+      )
+      if (result.success) {
+        showNotification(`成功上传了 ${result.uploaded_count} 个文件`, 'success')
+        // 刷新远程列表
+        if (isSftpActive.value) {
+          await scanRemoteVpks()
+        }
+      } else {
+        showNotification(result.error || '上传失败', 'error')
+      }
+    } catch (error) {
+      showNotification(`上传错误: ${error}`, 'error')
+    } finally {
+      isUploading.value = false
     }
   }
 
@@ -240,10 +437,10 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function deleteVpks(disable: boolean = true) {
-    const paths = getSelectedVpkPaths()
+  async function deleteVpks(disable: boolean = true, targetPaths?: string[]) {
+    const paths = targetPaths || getSelectedVpkPaths()
     if (paths.length === 0) {
-      showNotification('No files selected for deletion', 'error')
+      showNotification('No files selected', 'error')
       return
     }
 
@@ -255,12 +452,19 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       const result = await (window as any).pywebview.api.delete_multiple_vpk_files(paths, disable)
       
       if (!result.success && result.error_count > 0) {
-        showNotification(`${result.error_count} files failed to delete`, 'error')
+        showNotification(`${result.error_count} files failed to process`, 'error')
       } else if (result.success) {
-        // Deleted successfully, clear selections
-        selectedLocalVpks.clear()
-        selectedWorkshopVpks.clear()
-        showNotification('文件已成功删除', 'success')
+        // Deleted successfully, clear selections that were processed
+        if (targetPaths) {
+          targetPaths.forEach(p => {
+            selectedLocalVpks.delete(p)
+            selectedWorkshopVpks.delete(p)
+          })
+        } else {
+          selectedLocalVpks.clear()
+          selectedWorkshopVpks.clear()
+        }
+        showNotification(disable ? '文件状态已更新' : '文件已成功删除', 'success')
       }
 
       // Always rescan after deletion attempt to update UI
@@ -296,25 +500,43 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     workshopVpkFiles,
     selectedLocalVpks,
     selectedWorkshopVpks,
+    selectedRemoteVpks,
     isScanning,
     isExporting,
     isDeleting,
     isImporting,
     isLocalizing,
+    isSftpActive,
+    isRemoteScanning,
+    isDownloading,
+    isUploading,
     useBetterNaming,
+    sftpSettings,
+    remoteVpkFiles,
     notification,
     showNotification,
     toggleLocalVpkSelection,
     toggleWorkshopVpkSelection,
+    toggleRemoteVpkSelection,
     selectAllLocal,
     deselectAllLocal,
     selectAllWorkshop,
     deselectAllWorkshop,
+    selectAllRemote,
+    deselectAllRemote,
     getSelectedVpkPaths,
     clearError,
     scanVpks,
     importVpks,
     localizeVpks,
+    saveSftpSettings,
+    scanRemoteVpks,
+    deleteRemoteVpk,
+    deleteMultipleRemoteVpks,
+    disableRemoteVpks,
+    enableRemoteVpks,
+    downloadRemoteVpks,
+    uploadLocalVpks,
     initialize,
     openAddonsFolder,
     openWorkshopFolder,

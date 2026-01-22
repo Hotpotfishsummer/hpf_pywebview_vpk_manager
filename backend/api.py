@@ -15,6 +15,7 @@ from .services.vpk_metadata_service import VpkMetadataService
 from .services.vpk_export_service import VpkExportService
 from .services.vpk_import_service import VpkImportService
 from .services.storage_service import StorageService
+from .services.sftp_service import SftpService
 
 # 确保存储目录存在
 STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
@@ -52,6 +53,14 @@ class VpkManagerApi:
         'delete_multiple_vpk_files',
         'reset_app_data',
         'log_from_js',
+        'get_sftp_settings',
+        'save_sftp_settings',
+        'list_remote_vpks',
+        'delete_remote_vpk',
+        'delete_multiple_remote_vpks',
+        'rename_remote_vpk',
+        'download_remote_vpks',
+        'upload_local_vpks',
     }
 
     def __init__(self):
@@ -65,6 +74,8 @@ class VpkManagerApi:
         logger.info("  - VpkImportService 初始化完成")
         self.storage_service = StorageService()
         logger.info("  - StorageService 初始化完成")
+        self.sftp_service = SftpService()
+        logger.info("  - SftpService 初始化完成")
         self._is_scanning = False
         self._is_exporting = False
         self._window = None  # 存储 webview 窗口引用
@@ -111,6 +122,183 @@ class VpkManagerApi:
         except Exception as e:
             logger.error(f"获取上次目录出错: {e}")
             return ""
+
+    def get_sftp_settings(self) -> dict:
+        """获取 SFTP 设置。"""
+        try:
+            return self.storage_service.get_sftp_settings()
+        except Exception as e:
+            logger.error(f"获取 SFTP 设置出错: {e}")
+            return {
+                'address': '',
+                'username': '',
+                'password': '',
+                'addons_path': ''
+            }
+
+    def save_sftp_settings(self, settings: dict) -> dict:
+        """保存 SFTP 设置。"""
+        try:
+            self.storage_service.save_sftp_settings(settings)
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"保存 SFTP 设置出错: {e}")
+            return {"success": False, "error": str(e)}
+
+    def list_remote_vpks(self) -> dict:
+        """列出远程 SFTP 服务器上的 VPK 文件"""
+        try:
+            config = self.storage_service.get_sftp_settings()
+            files = self.sftp_service.list_vpk_files(config)
+            return {"success": True, "files": files}
+        except Exception as e:
+            logger.error(f"获取远程文件列表出错: {e}")
+            return {"success": False, "error": str(e)}
+
+    def delete_remote_vpk(self, file_path: str) -> dict:
+        """删除远程 SFTP 服务器上的 VPK 文件"""
+        try:
+            config = self.storage_service.get_sftp_settings()
+            success = self.sftp_service.delete_file(config, file_path)
+            if success:
+                return {"success": True}
+            else:
+                return {"success": False, "error": "删除失败"}
+        except Exception as e:
+            logger.error(f"删除远程文件出错: {e}")
+            return {"success": False, "error": str(e)}
+
+    def delete_multiple_remote_vpks(self, file_paths: List[str]) -> dict:
+        """批量删除远程 SFTP 服务器上的 VPK 文件"""
+        try:
+            config = self.storage_service.get_sftp_settings()
+            success_count = 0
+            errors = []
+            for path in file_paths:
+                if self.sftp_service.delete_file(config, path):
+                    success_count += 1
+                else:
+                    errors.append(path)
+            
+            return {
+                "success": len(errors) == 0,
+                "success_count": success_count,
+                "error_count": len(errors),
+                "errors": errors
+            }
+        except Exception as e:
+            logger.error(f"批量删除远程文件出错: {e}")
+            return {"success": False, "error": str(e)}
+
+    def rename_remote_vpk(self, old_path: str, new_path: str) -> dict:
+        """重命名远程 SFTP 服务器上的 VPK 文件 (用于禁用/启用)"""
+        try:
+            config = self.storage_service.get_sftp_settings()
+            success = self.sftp_service.rename_file(config, old_path, new_path)
+            if success:
+                return {"success": True}
+            else:
+                return {"success": False, "error": "重命名失败"}
+        except Exception as e:
+            logger.error(f"重命名远程文件出错: {e}")
+            return {"success": False, "error": str(e)}
+
+    def download_remote_vpks(self, remote_file_paths: List[str]) -> dict:
+        """将远程 VPK 文件及关联图片下载到本地 addons 目录"""
+        try:
+            l4d2_dir = self.storage_service.get_l4d2_directory()
+            if not l4d2_dir:
+                return {"success": False, "error": "未配置本地 L4D2 目录"}
+            
+            local_addons_dir = os.path.join(l4d2_dir, "left4dead2", "addons")
+            config = self.storage_service.get_sftp_settings()
+            
+            success_count = 0
+            for r_path in remote_file_paths:
+                # 下载 VPK
+                file_name = os.path.basename(r_path)
+                l_path = os.path.join(local_addons_dir, file_name)
+                if self.sftp_service.download_file(config, r_path, l_path):
+                    success_count += 1
+                    
+                    # 尝试下载同名图片
+                    base_name = os.path.splitext(file_name)[0]
+                    # 如果是被禁用的文件，移除 .vpk.disabled 后的 base_name 应该是不带 .vpk 的
+                    if file_name.lower().endswith('.vpk.disabled'):
+                        base_name = file_name[:-13] # xxx.vpk.disabled -> xxx
+                    elif file_name.lower().endswith('.vpk'):
+                        base_name = file_name[:-4]  # xxx.vpk -> xxx
+
+                    for ext in ['.jpg', '.png', '.jpeg']:
+                        r_img_path = os.path.join(os.path.dirname(r_path), base_name + ext).replace('\\', '/')
+                        if self.sftp_service.file_exists(config, r_img_path):
+                            l_img_path = os.path.join(local_addons_dir, base_name + ext)
+                            self.sftp_service.download_file(config, r_img_path, l_img_path)
+            
+            return {"success": True, "downloaded_count": success_count}
+        except Exception as e:
+            logger.error(f"下载远程文件出错: {e}")
+            return {"success": False, "error": str(e)}
+
+    def upload_local_vpks(self, local_file_paths: List[str], better_naming: bool = False) -> dict:
+        """将本地 VPK 文件及关联图片上传到远程 SFTP 服务器"""
+        try:
+            config = self.storage_service.get_sftp_settings()
+            remote_addons_path = config.get('addons_path', '')
+            if not remote_addons_path:
+                return {"success": False, "error": "未配置远程 addons 路径"}
+            
+            success_count = 0
+            image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
+
+            for l_path in local_file_paths:
+                # 确定文件名
+                src_path = Path(l_path)
+                base_name = src_path.stem
+                is_disabled = l_path.lower().endswith('.vpk.disabled')
+
+                if better_naming:
+                    title = self.metadata_service.get_addontitle(l_path)
+                    if title:
+                        # 清洗非法字符并替换空格
+                        custom_title = title.replace(" ", "_").strip()
+                        illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
+                        base_name = re.sub(illegal_pattern, '_', custom_title)
+                        # 连续下划线合并
+                        base_name = re.sub(r'_{2,}', '_', base_name)
+                        # 如果清理后变为空（纯非法字符），回退到原 stem
+                        if not base_name.strip('_'):
+                            base_name = src_path.stem
+                
+                # 远程 VPK 文件名
+                suffix = ".vpk.disabled" if is_disabled else ".vpk"
+                dest_file_name = f"{base_name}{suffix}"
+                r_path = os.path.join(remote_addons_path, dest_file_name).replace('\\', '/')
+                
+                # 上传 VPK
+                if self.sftp_service.upload_file(config, l_path, r_path):
+                    success_count += 1
+                    
+                    # 尝试上传关联图片
+                    src_stem = src_path.stem
+                    if is_disabled:
+                        # 如果是 .vpk.disabled，src_path.stem 会包含 .vpk
+                        if src_stem.lower().endswith('.vpk'):
+                            src_stem = src_stem[:-4]
+
+                    src_parent = src_path.parent
+                    for ext in image_exts:
+                        for img_src in [src_parent / f"{src_stem}{ext}", src_parent / f"{src_stem}{ext.upper()}"]:
+                            if img_src.exists() and img_src.is_file():
+                                # 图片也按照 VPK 的新名称命名，但保留原本后缀
+                                remote_img_name = f"{base_name}{img_src.suffix}"
+                                r_img_path = os.path.join(remote_addons_path, remote_img_name).replace('\\', '/')
+                                self.sftp_service.upload_file(config, str(img_src), r_img_path)
+            
+            return {"success": True, "uploaded_count": success_count}
+        except Exception as e:
+            logger.error(f"上传本地文件出错: {e}")
+            return {"success": False, "error": str(e)}
 
     def browse_directory(self) -> Optional[str]:
         """打开系统文件对话框选择目录。
@@ -280,7 +468,8 @@ class VpkManagerApi:
             # 扫描本地 VPK 文件
             if os.path.exists(addons_dir):
                 for filename in os.listdir(addons_dir):
-                    if filename.endswith(".vpk"):
+                    filename_lower = filename.lower()
+                    if filename_lower.endswith(".vpk") or filename_lower.endswith(".vpk.disabled"):
                         vpk_path = os.path.join(addons_dir, filename)
                         try:
                             vpk_file = self.metadata_service.get_vpk_metadata(vpk_path)
@@ -292,7 +481,8 @@ class VpkManagerApi:
             # 扫描创意工坊文件
             if os.path.exists(workshop_dir):
                 for filename in os.listdir(workshop_dir):
-                    if filename.endswith(".vpk"):
+                    filename_lower = filename.lower()
+                    if filename_lower.endswith(".vpk") or filename_lower.endswith(".vpk.disabled"):
                         vpk_path = os.path.join(workshop_dir, filename)
                         try:
                             vpk_file = self.metadata_service.get_vpk_metadata(vpk_path)
@@ -460,7 +650,24 @@ class VpkManagerApi:
                         continue
 
                     if disable:
-                        new_path = f"{file_path}.disabled"
+                        if file_path.endswith(".disabled"):
+                            new_path = file_path[:-9]  # Remove .disabled
+                        else:
+                            new_path = f"{file_path}.disabled"
+                        
+                        # 同时也重命名关联的图片文件
+                        parent_dir = os.path.dirname(file_path)
+                        old_base = os.path.splitext(file_path)[0]
+                        new_base = os.path.splitext(new_path)[0]
+                        
+                        for ext in ['.jpg', '.png', '.jpeg', '.txt']:
+                            old_img = old_base + ext
+                            new_img = new_base + ext
+                            if os.path.exists(old_img):
+                                if os.path.exists(new_img):
+                                    os.remove(new_img)
+                                os.rename(old_img, new_img)
+
                         if os.path.exists(new_path):
                             os.remove(new_path)
                         os.rename(file_path, new_path)
