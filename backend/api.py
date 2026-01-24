@@ -17,6 +17,7 @@ from .services.vpk_export_service import VpkExportService
 from .services.vpk_import_service import VpkImportService
 from .services.storage_service import StorageService
 from .services.sftp_service import SftpService
+from .services.config_service import ConfigService
 
 # 确保存储目录存在
 STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
@@ -78,10 +79,31 @@ class VpkManagerApi:
         logger.info("  - StorageService 初始化完成")
         self.sftp_service = SftpService()
         logger.info("  - SftpService 初始化完成")
+        
+        # 获取应用根目录
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.config_service = ConfigService(base_path)
+        logger.info(f"  - ConfigService 初始化完成 (base_path: {base_path})")
+        
+        # 启动时自动运行: 检查并更新 autoexec.cfg
+        self._auto_apply_config()
+        
         self._is_scanning = False
         self._is_exporting = False
         self._window = None  # 存储 webview 窗口引用
         logger.info("VpkManagerApi 初始化完成")
+
+    def _auto_apply_config(self):
+        """启动时自动应用配置"""
+        try:
+            l4d2_dir = self.storage_service.get_l4d2_directory()
+            if l4d2_dir:
+                logger.info(f"正在启动自动配置更新: {l4d2_dir}")
+                self.config_service.apply_autoexec_template(l4d2_dir)
+            else:
+                logger.info("未找到保存的 L4D2 目录，略过启动自动配置")
+        except Exception as e:
+            logger.error(f"启动自动配置出错: {e}")
 
     def set_window(self, window):
         """设置 webview 窗口引用"""
@@ -503,6 +525,9 @@ class VpkManagerApi:
 
             # 保存目录供以后使用
             self.storage_service.save_l4d2_directory(directory)
+
+            # 自动应用配置
+            self.config_service.apply_autoexec_template(directory)
 
             addons_dir = os.path.join(directory, "left4dead2", "addons")
             workshop_dir = os.path.join(directory, "left4dead2", "addons", "workshop")

@@ -81,6 +81,7 @@ python -m nuitka `
     --onefile `
     --windows-console-mode=disable `
     --include-data-dir=frontend/dist=frontend/dist `
+    --include-data-dir=assets=assets `
     --windows-icon-from-ico=assets/app_icon.ico `
     --output-dir=$outputDir `
     --output-filename="L4D2-VPK-Manager.exe" `

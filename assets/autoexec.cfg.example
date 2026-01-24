@@ -1,0 +1,7 @@
+fps_max 300
+// 客户端自动调节 Lerp
+rate 100000
+cl_cmdrate 60        // 匹配你现在的 60 Tick 服务器
+cl_updaterate 60
+cl_interp_ratio 0
+cl_interp 0          // 强制系统根据 Tickrate 计算物理最小值

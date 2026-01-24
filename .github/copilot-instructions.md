@@ -331,6 +331,7 @@ python -m nuitka `
     --onefile                              # 单一可执行文件
     --windows-console-mode=gui             # 隐藏控制台窗口
     --include-data-dir=frontend/dist=...   # 嵌入前端资源
+    --include-data-dir=assets=assets       # 嵌入资源文件
     --output-dir=dist                      # 输出目录
     main.py
 ```
@@ -361,6 +362,13 @@ conda activate hpf-vpk-manager-pywebview
 # - Python PyWebView 应用
 # 按 Ctrl+C 停止所有服务
 ```
+
+### 依赖管理
+
+**当需要添加新的 Python 依赖时：**
+1.  **修改 `environment.yml`**：在 `dependencies` -> `pip` 下添加新包及版本。
+2.  **修改 `requirements.txt`**：同步添加新的包。
+3.  **安装到环境**：在终端运行 `pip install <package_name>` 以立即生效。
 
 ### 编辑工作流
 
