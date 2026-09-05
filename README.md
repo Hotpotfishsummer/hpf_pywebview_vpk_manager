@@ -109,6 +109,10 @@ python main.py
 │       ├── vpk_metadata_service.py    # VPK 元数据提取（带 mtime/size 缓存失效校验）
 │       ├── vpk_export_service.py      # VPK 导出和压缩
 │       ├── vpk_import_service.py      # 压缩包（zip/7z/tar.zst）导入
+│       ├── vpk_scan_service.py        # 本地/创意工坊 VPK 扫描
+│       ├── vpk_localize_service.py    # 创意工坊文件本地化（复制+归档）
+│       ├── vpk_upload_service.py      # VPK 及关联图片上传
+│       ├── vpk_download_service.py    # VPK 及关联图片下载
 │       ├── storage_service.py         # 用户偏好存储
 │       ├── sftp_service.py            # SFTP 远程文件管理
 │       └── config_service.py          # autoexec.cfg 配置管理
