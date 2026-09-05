@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 import shutil
 import os
+import tempfile
 import time
 import tarfile
 import multiprocessing
@@ -57,11 +58,9 @@ class VpkExportService:
 
             print(f"export_vpks: creating archive {archive_path}")
 
-            # Create temporary directory for collecting files
-            temp_dir = output_path / '.vpk_temp'
-            if temp_dir.exists():
-                shutil.rmtree(temp_dir)
-            temp_dir.mkdir(parents=True, exist_ok=True)
+            # Create unique temporary directory for collecting files
+            # (固定名 .vpk_temp 在残留/并行导出时会互相覆盖)
+            temp_dir = Path(tempfile.mkdtemp(prefix='.vpk_temp_', dir=output_path))
 
             try:
                 # Copy VPK files to temp directory
