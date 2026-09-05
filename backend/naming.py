@@ -32,6 +32,8 @@ def vpk_stem_for_association(filename: str) -> str:
     name = filename
     if name.lower().endswith('.disabled'):
         name = name[: -len('.disabled')]
+    if name.lower().endswith('.vpk'):
+        return name
     return os.path.splitext(name)[0]
 
 
