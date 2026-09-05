@@ -8,9 +8,12 @@
 - 📁 浏览并选择 L4D2 游戏目录
 - 📦 扫描并列出本地 VPK 文件和 Steam 创意工坊文件
 - 💾 导出选定的 VPK 文件为 tar.zst 压缩包
-- 🗑️ 删除或禁用 VPK 文件
+- 📥 从 zip / 7z / tar.zst 压缩包导入 VPK 及其缩略图
+- 🗑️ 删除或禁用 VPK 文件（自动同步处理关联图片/文本）
+- 🌐 SFTP 远程文件同步：浏览、上传、下载、禁用/启用、重命名
+- ⚙️ autoexec.cfg 自动应用模板并备份现有文件
 - 🌍 完整的双语支持（英文和简体中文）
-- ⚡ 快速的 VPK 元数据提取和缓存系统
+- ⚡ 快速的 VPK 元数据提取和缓存系统（自动失效重建）
 
 🏗️ **技术特点**
 - **前端：** Vue 3 + TypeScript + Pinia + Vite
@@ -183,7 +186,17 @@ conda activate hpf-vpk-manager-pywebview
 python -m pytest
 ```
 
-测试覆盖：VPK 命名清洗逻辑（`backend/naming.py`）、元数据提取与缓存失效、导入/导出的纯函数、单文件/批量禁用删除操作。全部使用临时目录，不触碰真实用户数据。
+测试覆盖：VPK 命名清洗逻辑（`backend/naming.py`）、元数据提取与缓存失效、导入/导出全链路、SFTP 服务（mock）、配置与偏好存储、真实 VPK 构造的标题编码链路、i18n 语言键一致性守卫。全部使用临时目录或 mock，不触碰真实用户数据。
+
+前端类型检查：
+
+```bash
+cd frontend && npm run typecheck
+```
+
+## 持续集成
+
+`.github/workflows/ci.yml` 在 push/PR 时自动运行：后端 pytest（Python 3.12）、前端 vue-tsc 类型检查、前端 vite 构建。
 
 ## VS Code 快捷键和任务
 
