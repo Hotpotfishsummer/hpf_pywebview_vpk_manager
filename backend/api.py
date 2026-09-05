@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import os
-import re
 import shutil
 import sys
 import webview
@@ -12,6 +11,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from .models import ApiResponse, VpkFile
+from .naming import build_export_base_name
 from .services.vpk_metadata_service import VpkMetadataService
 from .services.vpk_export_service import VpkExportService
 from .services.vpk_import_service import VpkImportService
@@ -291,26 +291,7 @@ class VpkManagerApi:
 
                 if better_naming:
                     title = self.metadata_service.get_addontitle(l_path)
-                    if title:
-                        # 尝试从原始文件名中提取数字 ID (8位或以上)
-                        # 为了兼容性，先在原始文件名中找 ID
-                        id_match = re.search(r'(\d{8,})', src_path.name)
-                        workshop_id = id_match.group(1) if id_match else ""
-
-                        # 清洗非法字符并替换空格
-                        custom_title = title.replace(" ", "_").strip()
-                        illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
-                        base_name = re.sub(illegal_pattern, '_', custom_title)
-                        # 连续下划线合并
-                        base_name = re.sub(r'_{2,}', '_', base_name)
-                        
-                        # 如果清理后变为空（纯非法字符），回退到原 stem
-                        if not base_name.strip('_'):
-                            base_name = src_path.stem
-                        
-                        # 如果找到了 ID 且新文件名中还不包含这个 ID，则追加它
-                        if workshop_id and workshop_id not in base_name:
-                            base_name = f"{base_name}-{workshop_id}"
+                    base_name = build_export_base_name(title, src_path.name, src_path.stem)
                 
                 # 远程 VPK 文件名
                 suffix = ".vpk.disabled" if is_disabled else ".vpk"
@@ -853,25 +834,9 @@ class VpkManagerApi:
                     if better_naming:
                         vpk_meta = self.metadata_service.get_vpk_metadata(src_path_str)
                         if vpk_meta and vpk_meta.addontitle:
-                            # 尝试从原始文件名中提取数字 ID (8位或以上)
-                            id_match = re.search(r'(\d{8,})', src_path.name)
-                            workshop_id = id_match.group(1) if id_match else ""
-
-                            # 清洗非法字符并替换空格
-                            # 先将空格替换为下划线，再移除 Windows 不允许的文件名字符
-                            custom_title = vpk_meta.addontitle.replace(" ", "_").strip()
-                            illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
-                            base_name = re.sub(illegal_pattern, '_', custom_title)
-                            # 连续下划线合并
-                            base_name = re.sub(r'_{2,}', '_', base_name)
-                            
-                            # 如果清理后变为空（纯非法字符），回退到原 stem
-                            if not base_name.strip('_'):
-                                base_name = src_path.stem
-                            
-                            # 如果找到了 ID 且新文件名中还不包含这个 ID，则追加它
-                            if workshop_id and workshop_id not in base_name:
-                                base_name = f"{base_name}-{workshop_id}"
+                            base_name = build_export_base_name(
+                                vpk_meta.addontitle, src_path.name, src_path.stem
+                            )
 
                     # 目标 VPK 路径
                     dest_vpk = Path(addons_dir) / f"{base_name}.vpk"

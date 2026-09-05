@@ -9,6 +9,8 @@ import tarfile
 import multiprocessing
 import re
 
+from ..naming import build_export_base_name
+
 try:
     import zstandard as zstd
     HAS_ZSTD = True
@@ -69,27 +71,7 @@ class VpkExportService:
                     # 确定导出后的基础文件名
                     base_name = vpk_path.stem
                     if better_naming and titles and i < len(titles) and titles[i]:
-                        # 尝试从原始文件名中提取数字 ID (8位或以上)
-                        id_match = re.search(r'(\d{8,})', vpk_path.name)
-                        workshop_id = id_match.group(1) if id_match else ""
-
-                        # 使用 addontitle 并去除空格和非法字符
-                        custom_title = titles[i]
-                        # 移除空格，替换为下划线，并处理其他非法字符
-                        custom_title = custom_title.replace(" ", "_").strip()
-                        # 复用清洗逻辑
-                        illegal_pattern = r'[<>:"/\\|?*\x00-\x1f]'
-                        base_name = re.sub(illegal_pattern, '_', custom_title)
-                        # 连续下划线合并
-                        base_name = re.sub(r'_{2,}', '_', base_name)
-                        
-                        # 确保不为空
-                        if not base_name.strip('_'):
-                            base_name = vpk_path.stem
-                        
-                        # 如果找到了 ID 且新文件名中还不包含这个 ID，则追加它
-                        if workshop_id and workshop_id not in base_name:
-                            base_name = f"{base_name}-{workshop_id}"
+                        base_name = build_export_base_name(titles[i], vpk_path.name, vpk_path.stem)
 
                     # Copy VPK file
                     if vpk_path.exists():
@@ -135,7 +117,7 @@ class VpkExportService:
 
                 # Create zstandard context with maximum compression level and multi-threading
                 cctx = zstd.ZstdCompressor(
-                    level=3,  # Maximum compression level (1-22, default 3)
+                    level=3,  # 默认压缩级别 (范围 1-22)
                     threads=num_threads,  # Multi-threaded compression
                     write_checksum=True,  # Include checksum for integrity verification
                 )
