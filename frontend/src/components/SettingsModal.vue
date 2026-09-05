@@ -1,10 +1,10 @@
 <template>
   <transition name="fade">
-    <div v-if="show" class="modal-overlay" @click.self="$emit('update:show', false)">
+    <div v-if="show" class="modal-overlay" @click.self="emit('update:show', false)">
       <div class="modal-content settings-modal">
         <div class="modal-header">
           <h2 class="modal-title">⚙️ {{ $t('settingsTitle') }}</h2>
-          <button class="modal-close" @click="$emit('update:show', false)">×</button>
+          <button class="modal-close" @click="emit('update:show', false)">×</button>
         </div>
         <div class="modal-body">
           <!-- General Settings -->
@@ -74,7 +74,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-primary" @click="$emit('update:show', false)">{{ $t('close') }}</button>
+          <button class="btn btn-primary" @click="emit('update:show', false)">{{ $t('close') }}</button>
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@ interface PyWebViewApi {
   download_remote_vpks(remote_file_paths: string[]): Promise<any>
   upload_local_vpks(local_file_paths: string[], better_naming: boolean): Promise<any>
   open_external_url(url: string): Promise<void>
+  log_from_js(level: string, message: string): Promise<void>
 }
 
 declare global {

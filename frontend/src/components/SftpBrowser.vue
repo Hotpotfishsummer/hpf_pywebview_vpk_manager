@@ -128,12 +128,6 @@ async function handleBatchDelete() {
   }
 }
 
-async function handleDelete(file: any) {
-  if (confirm($t('confirmDeleteRemote', { name: file.name }))) {
-    await store.deleteRemoteVpk(file.path)
-  }
-}
-
 onMounted(() => {
   if (store.sftpSettings.address && store.sftpSettings.addons_path) {
     store.scanRemoteVpks()
