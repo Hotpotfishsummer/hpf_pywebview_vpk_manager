@@ -31,9 +31,8 @@ def vpk_stem_for_association(filename: str) -> str:
     """
     name = filename
     if name.lower().endswith('.disabled'):
-        name = name[: -len('.disabled')]
-    if name.lower().endswith('.vpk'):
-        return name
+        # mod.vpk.disabled → mod.vpk(图片为 x.vpk.jpg,与缩略图扫描一致)
+        return name[: -len('.disabled')]
     return os.path.splitext(name)[0]
 
 
