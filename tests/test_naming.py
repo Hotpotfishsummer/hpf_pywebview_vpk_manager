@@ -5,6 +5,7 @@ from backend.naming import (
     extract_workshop_id,
     find_associated_images,
     sanitize_addon_title,
+    vpk_stem_for_association,
 )
 
 
@@ -70,6 +71,18 @@ class TestBuildExportBaseName:
     def test_fallback_stem_has_no_id_appended(self):
         # 回退分支不追加工坊 ID(与原三处实现一致)
         assert build_export_base_name(None, "999888777666.vpk", "orig") == "orig"
+
+
+class TestVpkStemForAssociation:
+    def test_enabled_vpk(self):
+        assert vpk_stem_for_association("mod.vpk") == "mod"
+
+    def test_disabled_vpk_keeps_vpk_in_stem(self):
+        # 与缩略图扫描约定一致:禁用文件的图片是 x.vpk.jpg
+        assert vpk_stem_for_association("mod.vpk.disabled") == "mod.vpk"
+
+    def test_case_insensitive_disabled_suffix(self):
+        assert vpk_stem_for_association("mod.VPK.DISABLED") == "mod.VPK"
 
 
 class TestFindAssociatedImages:

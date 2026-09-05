@@ -23,6 +23,18 @@ def extract_workshop_id(filename: str) -> str:
     return match.group(1) if match else ""
 
 
+def vpk_stem_for_association(filename: str) -> str:
+    """计算与 VPK 关联图片/文档使用的基名。
+
+    约定与缩略图扫描一致:x.vpk → x;x.vpk.disabled → x.vpk
+    (即先剥 .disabled 再取 splitext,禁用文件的图片名为 x.vpk.jpg)。
+    """
+    name = filename
+    if name.lower().endswith('.disabled'):
+        name = name[: -len('.disabled')]
+    return os.path.splitext(name)[0]
+
+
 def sanitize_addon_title(title: str) -> str:
     """把 addontitle 清洗为安全的文件名:空格转下划线、非法字符替换、合并连续下划线"""
     custom_title = title.replace(" ", "_").strip()

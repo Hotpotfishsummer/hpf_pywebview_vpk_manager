@@ -11,7 +11,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from .models import ApiResponse, VpkFile
-from .naming import build_export_base_name, find_associated_images
+from .naming import build_export_base_name, find_associated_images, vpk_stem_for_association
 from .services.vpk_metadata_service import VpkMetadataService
 from .services.vpk_export_service import VpkExportService
 from .services.vpk_import_service import VpkImportService
@@ -253,14 +253,10 @@ class VpkManagerApi:
                 l_path = os.path.join(local_addons_dir, file_name)
                 if self.sftp_service.download_file(config, r_path, l_path):
                     success_count += 1
-                    
-                    # 尝试下载同名图片
-                    base_name = os.path.splitext(file_name)[0]
-                    # 如果是被禁用的文件，移除 .vpk.disabled 后的 base_name 应该是不带 .vpk 的
-                    if file_name.lower().endswith('.vpk.disabled'):
-                        base_name = file_name[:-13] # xxx.vpk.disabled -> xxx
-                    elif file_name.lower().endswith('.vpk'):
-                        base_name = file_name[:-4]  # xxx.vpk -> xxx
+
+                    # 尝试下载同名图片(约定与本地缩略图一致:
+                    # 禁用文件 x.vpk.disabled 的图片是 x.vpk.jpg)
+                    base_name = vpk_stem_for_association(file_name)
 
                     for ext in ['.jpg', '.png', '.jpeg']:
                         r_img_path = os.path.join(os.path.dirname(r_path), base_name + ext).replace('\\', '/')
@@ -775,8 +771,6 @@ class VpkManagerApi:
             success_count = 0
             errors = []
 
-            image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
-
             for src_path_str in file_paths:
                 try:
                     src_path = Path(src_path_str).absolute()
@@ -803,18 +797,15 @@ class VpkManagerApi:
                     # 复制 VPK 到 addons (如果是禁用状态的文件，这里也统一恢复为 .vpk)
                     shutil.copy2(src_path, dest_vpk)
                     
-                    # 尝试复制并重命名同名图片到 addons
-                    src_stem = src_path.stem
+                    # 尝试复制并重命名同名图片到 addons(大小写不敏感扫描)
                     src_parent = src_path.parent
-                    associated_files = [] # 记录关联文件路径用于后续移动
+                    associated_files = []  # 记录关联文件路径用于后续移动
 
-                    for ext in image_exts:
-                        for img_src in [src_parent / f"{src_stem}{ext}", src_parent / f"{src_stem}{ext.upper()}"]:
-                            if img_src.exists() and img_src.is_file():
-                                # 图片也按照 VPK 的新名称命名，但保留原本后缀
-                                dest_img = Path(addons_dir) / f"{base_name}{img_src.suffix}"
-                                shutil.copy2(img_src, dest_img)
-                                associated_files.append(img_src)
+                    for img_src, _ext in find_associated_images(str(src_parent), src_path.name):
+                        # 图片也按照 VPK 的新名称命名，但保留原本后缀
+                        dest_img = Path(addons_dir) / f"{base_name}{Path(img_src).suffix}"
+                        shutil.copy2(img_src, dest_img)
+                        associated_files.append(Path(img_src))
                     
                     # 本地化成功后，移动创意工坊下的原文件到 .trash
                     if is_in_workshop:
