@@ -77,3 +77,30 @@ class TestPublicMethodsConsistency:
     def test_all_public_methods_exist(self):
         for name in VpkManagerApi._PUBLIC_METHODS:
             assert callable(getattr(VpkManagerApi, name, None)), name
+
+
+class TestPublicMethodsComplete:
+    """防止新增公开方法忘记登记 _PUBLIC_METHODS(该表决定前端可见性)"""
+
+    def test_every_public_method_is_registered(self):
+        import inspect
+
+        public_methods = {
+            name
+            for name, _ in inspect.getmembers(VpkManagerApi, predicate=inspect.isfunction)
+            if not name.startswith("_")
+        }
+        # set_window 由 main.py 内部调用,不暴露给前端
+        unregistered = public_methods - VpkManagerApi._PUBLIC_METHODS - {"set_window"}
+        assert unregistered == set(), f"未登记到 _PUBLIC_METHODS: {sorted(unregistered)}"
+
+    def test_registry_has_no_phantom_entries(self):
+        import inspect
+
+        public_methods = {
+            name
+            for name, _ in inspect.getmembers(VpkManagerApi, predicate=inspect.isfunction)
+            if not name.startswith("_")
+        }
+        phantom = VpkManagerApi._PUBLIC_METHODS - public_methods
+        assert phantom == set(), f"_PUBLIC_METHODS 中存在不存在的方法: {sorted(phantom)}"
