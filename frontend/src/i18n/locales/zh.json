@@ -59,7 +59,6 @@
   "syncToLocal": "同步到本地",
   "uploadToSftp": "上传到服务器",
   "noRemoteFiles": "远程目录中未找到 VPK 文件",
-  "confirmDeleteRemote": "确定要删除远程文件 '{name}' 吗？",
   "confirmDeleteSelectedRemote": "确定要删除选中的 {count} 个远程文件吗？此操作不可撤销。",
   "selectedCount": "已选中 {count} 项",
   "enable": "启用",

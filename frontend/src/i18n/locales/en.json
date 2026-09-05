@@ -59,7 +59,6 @@
   "syncToLocal": "Sync to Local",
   "uploadToSftp": "Upload to SFTP",
   "noRemoteFiles": "No VPK files found in remote directory",
-  "confirmDeleteRemote": "Are you sure you want to delete remote file '{name}'?",
   "confirmDeleteSelectedRemote": "Are you sure you want to delete the selected {count} remote files? This cannot be undone.",
   "enable": "Enable",
   "disable": "Disable",
