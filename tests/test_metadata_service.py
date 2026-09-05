@@ -97,3 +97,81 @@ class TestGetVpkMetadata:
     def test_missing_file_returns_none(self, tmp_path):
         svc = _make_service(tmp_path)
         assert svc.get_vpk_metadata(str(tmp_path / "ghost.vpk")) is None
+
+
+class TestCacheInvalidation:
+    """缓存带 mtime/size 失效校验(backlog #3)"""
+
+    def _make_vpk(self, tmp_path, name="mod.vpk", content=b""):
+        vpk_file = tmp_path / name
+        vpk_file.write_bytes(content)
+        return str(vpk_file)
+
+    def test_fresh_cache_hit_does_not_reextract(self, tmp_path, monkeypatch):
+        svc = _make_service(tmp_path)
+        vpk_path = self._make_vpk(tmp_path)
+
+        # 首次提取建立缓存
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "Title V1")
+        assert svc.get_or_extract_metadata(vpk_path)["addontitle"] == "Title V1"
+
+        # 文件未变 → 命中缓存,不再调用 extract
+        monkeypatch.setattr(
+            svc, "extract_addontitle",
+            lambda p: (_ for _ in ()).throw(AssertionError("不应重新提取")),
+        )
+        assert svc.get_or_extract_metadata(vpk_path)["addontitle"] == "Title V1"
+
+    def test_stale_cache_reextracts_on_mtime_change(self, tmp_path, monkeypatch):
+        svc = _make_service(tmp_path)
+        vpk_path = self._make_vpk(tmp_path, content=b"v1")
+
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "Title V1")
+        svc.get_or_extract_metadata(vpk_path)
+
+        # 文件被替换(mtime 变化) → 缓存失效,重新提取并回写
+        import os
+        future = svc.load_metadata(vpk_path)["source_mtime"] + 100
+        os.utime(vpk_path, (future, future))
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "Title V2")
+        assert svc.get_or_extract_metadata(vpk_path)["addontitle"] == "Title V2"
+        assert svc.load_metadata(vpk_path)["addontitle"] == "Title V2"
+
+    def test_stale_cache_reextracts_on_size_change(self, tmp_path, monkeypatch):
+        svc = _make_service(tmp_path)
+        vpk_path = self._make_vpk(tmp_path, content=b"12345678")
+
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "Old")
+        svc.get_or_extract_metadata(vpk_path)
+
+        # 只改大小不改名的场景:内容变化导致 size 不同
+        vpk_path_obj = tmp_path / "mod.vpk"
+        vpk_path_obj.write_bytes(b"123456789")
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "New")
+        assert svc.get_or_extract_metadata(vpk_path)["addontitle"] == "New"
+
+    def test_legacy_cache_without_stat_keys_is_invalidated(self, tmp_path, monkeypatch):
+        svc = _make_service(tmp_path)
+        vpk_path = self._make_vpk(tmp_path)
+
+        # 旧格式缓存(无 source_mtime/source_size) → 视为失效
+        svc.save_metadata(vpk_path, {"addontitle": "Legacy"})
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "Fresh")
+        assert svc.get_or_extract_metadata(vpk_path)["addontitle"] == "Fresh"
+        # 新缓存带上了 stat 键
+        refreshed = svc.load_metadata(vpk_path)
+        assert "source_mtime" in refreshed and "source_size" in refreshed
+
+    def test_missing_file_keeps_old_cache_behavior(self, tmp_path):
+        svc = _make_service(tmp_path)
+        ghost = str(tmp_path / "ghost.vpk")
+
+        # 文件不存在 → 提取失败落空缓存 → 再查仍命中缓存且返回 None
+        assert svc.get_or_extract_metadata(ghost) is None
+        assert svc.get_or_extract_metadata(ghost) is None
+
+    def test_get_addontitle_unaffected_by_extra_keys(self, tmp_path, monkeypatch):
+        svc = _make_service(tmp_path)
+        vpk_path = self._make_vpk(tmp_path)
+        monkeypatch.setattr(svc, "extract_addontitle", lambda p: "T")
+        assert svc.get_addontitle(vpk_path) == "T"

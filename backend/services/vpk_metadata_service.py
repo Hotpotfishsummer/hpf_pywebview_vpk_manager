@@ -116,24 +116,50 @@ class VpkMetadataService:
             return None
 
     def get_or_extract_metadata(self, vpk_file_path: str) -> Optional[Dict[str, Any]]:
-        """从缓存或从 VPK 获取元数据"""
-        # 首先，尝试从 JSON 缓存加载
+        """从缓存或从 VPK 获取元数据(缓存带 mtime/size 失效校验)"""
+        path = Path(vpk_file_path)
         cached_metadata = self.load_metadata(vpk_file_path)
-        if cached_metadata is not None:
+        if cached_metadata is not None and self._cache_is_fresh(cached_metadata, path):
             _safe_print(f"get_or_extract_metadata: 使用缓存的元数据 {vpk_file_path}")
-            return cached_metadata
+            return cached_metadata or None
 
-        # 如果未缓存，从 VPK 提取
+        # 缓存缺失或已失效，从 VPK 提取
         _safe_print(f"get_or_extract_metadata: 从 {vpk_file_path} 提取元数据")
         addontitle = self.extract_addontitle(vpk_file_path)
 
         # 创建元数据字典（即使在错误情况下也为空）
-        metadata = {'addontitle': addontitle} if addontitle else {}
+        metadata: Dict[str, Any] = {'addontitle': addontitle} if addontitle else {}
+
+        # 记录源文件的 mtime/size，供下次缓存失效校验
+        try:
+            stat = path.stat()
+            metadata['source_mtime'] = stat.st_mtime
+            metadata['source_size'] = stat.st_size
+        except OSError:
+            pass
 
         # 保存到缓存
         self.save_metadata(vpk_file_path, metadata)
 
         return metadata if metadata else None
+
+    @staticmethod
+    def _cache_is_fresh(cached_metadata: Dict[str, Any], path: Path) -> bool:
+        """判断缓存是否仍与源文件一致。
+
+        文件已不存在时无法对比，沿用缓存（对齐旧行为）；
+        缓存缺少 mtime/size（旧格式）视为失效，触发一次重提取。
+        """
+        try:
+            stat = path.stat()
+        except OSError:
+            return True
+        if 'source_mtime' not in cached_metadata or 'source_size' not in cached_metadata:
+            return False
+        return (
+            cached_metadata['source_mtime'] == stat.st_mtime
+            and cached_metadata['source_size'] == stat.st_size
+        )
 
     def get_addontitle(self, vpk_file_path: str) -> Optional[str]:
         """获取 VPK 文件的 addontitle（从缓存或提取）"""
