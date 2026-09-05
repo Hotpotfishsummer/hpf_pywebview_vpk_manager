@@ -19,6 +19,7 @@ from .services.storage_service import StorageService
 from .services.sftp_service import SftpService
 from .services.config_service import ConfigService
 from .services.vpk_localize_service import VpkLocalizeService
+from .services.vpk_scan_service import VpkScanService
 
 # 确保存储目录存在
 STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
@@ -83,6 +84,8 @@ class VpkManagerApi:
         logger.info("  - SftpService 初始化完成")
         self.localize_service = VpkLocalizeService(self.metadata_service)
         logger.info("  - VpkLocalizeService 初始化完成")
+        self.scan_service = VpkScanService(self.metadata_service)
+        logger.info("  - VpkScanService 初始化完成")
         
         # 获取应用根目录
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -480,42 +483,13 @@ class VpkManagerApi:
             # 自动应用配置
             self.config_service.apply_autoexec_template(directory)
 
-            addons_dir = os.path.join(directory, "left4dead2", "addons")
-            workshop_dir = os.path.join(directory, "left4dead2", "addons", "workshop")
-
-            local_vpks = []
-            workshop_vpks = []
-
-            # 扫描本地 VPK 文件
-            if os.path.exists(addons_dir):
-                for filename in os.listdir(addons_dir):
-                    filename_lower = filename.lower()
-                    if filename_lower.endswith(".vpk") or filename_lower.endswith(".vpk.disabled"):
-                        vpk_path = os.path.join(addons_dir, filename)
-                        try:
-                            vpk_file = self.metadata_service.get_vpk_metadata(vpk_path)
-                            if vpk_file:
-                                local_vpks.append(self._vpk_to_dict(vpk_file))
-                        except Exception as e:
-                            logger.warning(f"处理文件 {filename} 出错: {e}")
-
-            # 扫描创意工坊文件
-            if os.path.exists(workshop_dir):
-                for filename in os.listdir(workshop_dir):
-                    filename_lower = filename.lower()
-                    if filename_lower.endswith(".vpk") or filename_lower.endswith(".vpk.disabled"):
-                        vpk_path = os.path.join(workshop_dir, filename)
-                        try:
-                            vpk_file = self.metadata_service.get_vpk_metadata(vpk_path)
-                            if vpk_file:
-                                workshop_vpks.append(self._vpk_to_dict(vpk_file))
-                        except Exception as e:
-                            logger.warning(f"处理文件 {filename} 出错: {e}")
+            # 扫描本地与创意工坊 VPK 文件
+            scan_result = self.scan_service.scan(directory)
 
             return {
                 "success": True,
-                "local_vpks": local_vpks,
-                "workshop_vpks": workshop_vpks,
+                "local_vpks": scan_result["local_vpks"],
+                "workshop_vpks": scan_result["workshop_vpks"],
             }
 
         except Exception as e:
@@ -769,18 +743,3 @@ class VpkManagerApi:
         except Exception as e:
             logger.error(f"本地化创意工坊文件出错: {e}")
             return {"success": False, "error": str(e)}
-
-    @staticmethod
-    def _vpk_to_dict(vpk_file: VpkFile) -> dict:
-        """Convert VpkFile object to dictionary for JSON serialization."""
-        return {
-            "name": vpk_file.name,
-            "path": vpk_file.path,
-            "size": vpk_file.size,
-            "modified_time": vpk_file.modified_time,
-            "is_valid": vpk_file.is_valid,
-            "is_disabled": vpk_file.is_disabled,
-            "thumbnail_path": vpk_file.thumbnail_path,
-            "addontitle": vpk_file.addontitle,
-            "display_name": vpk_file.display_name,
-        }
