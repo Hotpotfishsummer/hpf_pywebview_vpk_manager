@@ -1,5 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
+import i18n from '@/i18n'
+
+// 组件外使用 vue-i18n 的全局实例,保证通知文案跟随当前语言
+const $t = i18n.global.t
 
 export interface VpkFile {
   name: string
@@ -122,10 +126,10 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         selectedWorkshopVpks.clear()
         console.log(`Successfully scanned ${localVpkFiles.value.length + workshopVpkFiles.value.length} files`)
       } else {
-        showNotification(result.error || 'Failed to scan VPK files', 'error')
+        showNotification(result.error || $t('scanFailed'), 'error')
       }
     } catch (error) {
-      showNotification(`Scan error: ${error}`, 'error')
+      showNotification($t('scanError', { error }), 'error')
     } finally {
       isScanning.value = false
     }
@@ -133,7 +137,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
 
   async function importVpks() {
     if (!currentDirectory.value) {
-      showNotification('请先选择 L4D2 安装目录', 'error')
+      showNotification($t('needDirectoryFirst'), 'error')
       return
     }
 
@@ -146,14 +150,14 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       if (result.success) {
         // 导入成功，刷新列表
         await scanVpks(currentDirectory.value)
-        showNotification(`成功导入了 ${result.imported_count} 个压缩包中的文件`, 'success')
+        showNotification($t('importSuccessPacks', { count: result.imported_count }), 'success')
         return result
       } else {
-        showNotification(result.error || '导入失败', 'error')
+        showNotification(result.error || $t('importFailed'), 'error')
         return result
       }
     } catch (error) {
-      showNotification(`导入错误: ${error}`, 'error')
+      showNotification($t('importError', { error }), 'error')
       throw error
     } finally {
       isImporting.value = false
@@ -179,21 +183,21 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         await scanVpks(currentDirectory.value)
         const type = result.success ? 'success' : 'info'
         let msg = result.success 
-          ? `已成功本地化 ${result.success_count} 个文件` 
-          : `本地化完成：${result.success_count} 成功`
+          ? $t('localizeSuccess', { count: result.success_count })
+          : $t('localizePartial', { count: result.success_count })
         
         if (result.errors && result.errors.length > 0) {
-          msg += `，${result.errors.length} 失败`
+          msg += $t('localizePartialFailed', { count: result.errors.length })
         }
         showNotification(msg, type)
         return result
       } else {
-        const errorMsg = result.error || (result.errors && result.errors.length > 0 ? result.errors[0] : '本地化失败')
+        const errorMsg = result.error || (result.errors && result.errors.length > 0 ? result.errors[0] : $t('localizeFailed'))
         showNotification(errorMsg, 'error')
         return result
       }
     } catch (error) {
-      showNotification(`本地化错误: ${error}`, 'error')
+      showNotification($t('localizeError', { error }), 'error')
       throw error
     } finally {
       isLocalizing.value = false
@@ -261,10 +265,10 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         remoteVpkFiles.value = result.files || []
         selectedRemoteVpks.clear() // 扫描后清除之前的选中
       } else {
-        showNotification(result.error || '获取远程文件失败', 'error')
+        showNotification(result.error || $t('remoteScanFailed'), 'error')
       }
     } catch (error) {
-      showNotification(`SFTP 扫描错误: ${error}`, 'error')
+      showNotification($t('remoteScanError', { error }), 'error')
     } finally {
       isRemoteScanning.value = false
     }
@@ -274,13 +278,13 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     try {
       const result = await (window as any).pywebview.api.delete_remote_vpk(path)
       if (result.success) {
-        showNotification('远程文件已删除', 'success')
+        showNotification($t('remoteDeleted'), 'success')
         await scanRemoteVpks()
       } else {
-        showNotification(result.error || '删除远程文件失败', 'error')
+        showNotification(result.error || $t('remoteDeleteFailed'), 'error')
       }
     } catch (error) {
-      showNotification(`删除远程文件错误: ${error}`, 'error')
+      showNotification($t('remoteDeleteError', { error }), 'error')
     }
   }
 
@@ -292,15 +296,15 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     try {
       const result = await (window as any).pywebview.api.delete_multiple_remote_vpks(paths)
       if (result.success) {
-        showNotification('已删除选中的远程文件', 'success')
+        showNotification($t('remoteDeletedSelected'), 'success')
       } else if (result.success_count > 0) {
-        showNotification(`删除了 ${result.success_count} 个文件，${result.error_count} 个失败`, 'info')
+        showNotification($t('remoteDeletePartial', { success: result.success_count, failed: result.error_count }), 'info')
       } else {
-        showNotification('删除失败', 'error')
+        showNotification($t('deleteActionFailed'), 'error')
       }
       await scanRemoteVpks()
     } catch (error) {
-      showNotification(`删除错误: ${error}`, 'error')
+      showNotification($t('deleteActionError', { error }), 'error')
     } finally {
       isDeleting.value = false
     }
@@ -317,10 +321,10 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         const result = await (window as any).pywebview.api.rename_remote_vpk(path, `${path}.disabled`)
         if (result.success) successCount++
       }
-      showNotification(`已禁用 ${successCount} 个文件`, 'success')
+      showNotification($t('remoteDisabled', { count: successCount }), 'success')
       await scanRemoteVpks()
     } catch (error) {
-      showNotification(`禁用错误: ${error}`, 'error')
+      showNotification($t('remoteDisableError', { error }), 'error')
     } finally {
       isDeleting.value = false
     }
@@ -337,10 +341,10 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         const result = await (window as any).pywebview.api.rename_remote_vpk(path, path.substring(0, path.length - 9))
         if (result.success) successCount++
       }
-      showNotification(`已启用 ${successCount} 个文件`, 'success')
+      showNotification($t('remoteEnabled', { count: successCount }), 'success')
       await scanRemoteVpks()
     } catch (error) {
-      showNotification(`启用错误: ${error}`, 'error')
+      showNotification($t('remoteEnableError', { error }), 'error')
     } finally {
       isDeleting.value = false
     }
@@ -351,20 +355,20 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     if (paths.length === 0) return
     
     isDownloading.value = true
-    showNotification('正在下载远程文件...', 'info')
+    showNotification($t('downloadingRemote'), 'info')
     try {
       const result = await (window as any).pywebview.api.download_remote_vpks(paths)
       if (result.success) {
-        showNotification(`成功下载了 ${result.downloaded_count} 个文件`, 'success')
+        showNotification($t('downloadSuccess', { count: result.downloaded_count }), 'success')
         // 刷新本地列表
         if (currentDirectory.value) {
           await scanVpks(currentDirectory.value)
         }
       } else {
-        showNotification(result.error || '下载失败', 'error')
+        showNotification(result.error || $t('downloadFailed'), 'error')
       }
     } catch (error) {
-      showNotification(`下载错误: ${error}`, 'error')
+      showNotification($t('downloadError', { error }), 'error')
     } finally {
       isDownloading.value = false
     }
@@ -375,23 +379,23 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     if (paths.length === 0) return
     
     isUploading.value = true
-    showNotification('正在上传文件到服务器...', 'info')
+    showNotification($t('uploadingLocal'), 'info')
     try {
       const result = await (window as any).pywebview.api.upload_local_vpks(
         paths, 
         useBetterNaming.value
       )
       if (result.success) {
-        showNotification(`成功上传了 ${result.uploaded_count} 个文件`, 'success')
+        showNotification($t('uploadSuccess', { count: result.uploaded_count }), 'success')
         // 刷新远程列表
         if (isSftpActive.value) {
           await scanRemoteVpks()
         }
       } else {
-        showNotification(result.error || '上传失败', 'error')
+        showNotification(result.error || $t('uploadFailed'), 'error')
       }
     } catch (error) {
-      showNotification(`上传错误: ${error}`, 'error')
+      showNotification($t('uploadError', { error }), 'error')
     } finally {
       isUploading.value = false
     }
@@ -412,7 +416,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   async function exportVpks(outputDir: string) {
     const paths = getSelectedVpkPaths()
     if (paths.length === 0) {
-      showNotification('No files selected for export', 'error')
+      showNotification($t('selectFiles'), 'error')
       return
     }
 
@@ -430,14 +434,14 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         // Clear selection after export
         selectedLocalVpks.clear()
         selectedWorkshopVpks.clear()
-        showNotification('文件已成功导出', 'success')
+        showNotification($t('exportDone'), 'success')
       } else {
-        showNotification(result.error || 'Export failed', 'error')
+        showNotification(result.error || $t('exportError'), 'error')
       }
 
       return result
     } catch (error) {
-      showNotification(`Export error: ${error}`, 'error')
+      showNotification($t('exportErrorMsg', { error }), 'error')
     } finally {
       isExporting.value = false
     }
@@ -446,7 +450,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   async function deleteVpks(disable: boolean = true, targetPaths?: string[]) {
     const paths = targetPaths || getSelectedVpkPaths()
     if (paths.length === 0) {
-      showNotification('No files selected', 'error')
+      showNotification($t('selectFiles'), 'error')
       return
     }
 
@@ -458,7 +462,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       const result = await (window as any).pywebview.api.delete_multiple_vpk_files(paths, disable)
       
       if (!result.success && result.error_count > 0) {
-        showNotification(`${result.error_count} files failed to process`, 'error')
+        showNotification($t('deletePartialFailed', { count: result.error_count }), 'error')
       } else if (result.success) {
         // Deleted successfully, clear selections that were processed
         if (targetPaths) {
@@ -470,13 +474,13 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
           selectedLocalVpks.clear()
           selectedWorkshopVpks.clear()
         }
-        showNotification(disable ? '文件状态已更新' : '文件已成功删除', 'success')
+        showNotification(disable ? $t('statusUpdated') : $t('deleteSuccess'), 'success')
       }
 
       // Always rescan after deletion attempt to update UI
       await scanVpks(currentDirectory.value)
     } catch (error) {
-      showNotification(`Delete error: ${error}`, 'error')
+      showNotification($t('deleteActionError', { error }), 'error')
       // Still try to rescan even if there was an error
       try {
         await scanVpks(currentDirectory.value)

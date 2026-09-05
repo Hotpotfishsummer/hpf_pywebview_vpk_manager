@@ -304,7 +304,7 @@ async function handleDelete() {
     return
   }
 
-  const message = '确定要从磁盘彻底删除选中的 VPK 文件吗？此操作无法撤销。' + ` (${selectedCount})`
+  const message = $t('confirmHardDelete') + ` (${selectedCount})`
   if (confirm(message)) {
     await store.deleteVpks(false)
   }
