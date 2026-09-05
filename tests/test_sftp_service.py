@@ -37,7 +37,7 @@ class TestListVpkFiles:
         # .txt 被过滤;排序按 name.lower():'a.vpk' 是 'a.vpk.disabled' 的前缀
         assert [f["name"] for f in files] == ["A.vpk", "a.vpk.disabled", "b.vpk"]
         assert files[2]["size"] == 2.0  # MB
-        assert files[0]["is_disabled"] is True
+        assert files[1]["is_disabled"] is True  # a.vpk.disabled
         assert files[2]["path"] == "/srv/addons/b.vpk"
 
     def test_missing_addons_path_raises(self, monkeypatch):
