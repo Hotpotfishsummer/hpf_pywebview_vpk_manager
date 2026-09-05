@@ -21,6 +21,7 @@ from .services.config_service import ConfigService
 from .services.vpk_localize_service import VpkLocalizeService
 from .services.vpk_scan_service import VpkScanService
 from .services.vpk_upload_service import VpkUploadService
+from .services.vpk_download_service import VpkDownloadService
 
 # 确保存储目录存在
 STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
@@ -89,6 +90,8 @@ class VpkManagerApi:
         logger.info("  - VpkScanService 初始化完成")
         self.upload_service = VpkUploadService(self.metadata_service, self.sftp_service)
         logger.info("  - VpkUploadService 初始化完成")
+        self.download_service = VpkDownloadService(self.sftp_service)
+        logger.info("  - VpkDownloadService 初始化完成")
         
         # 获取应用根目录
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -251,29 +254,11 @@ class VpkManagerApi:
             l4d2_dir = self.storage_service.get_l4d2_directory()
             if not l4d2_dir:
                 return {"success": False, "error": "未配置本地 L4D2 目录"}
-            
+
             local_addons_dir = os.path.join(l4d2_dir, "left4dead2", "addons")
             config = self.storage_service.get_sftp_settings()
-            
-            success_count = 0
-            for r_path in remote_file_paths:
-                # 下载 VPK
-                file_name = os.path.basename(r_path)
-                l_path = os.path.join(local_addons_dir, file_name)
-                if self.sftp_service.download_file(config, r_path, l_path):
-                    success_count += 1
 
-                    # 尝试下载同名图片(约定与本地缩略图一致:
-                    # 禁用文件 x.vpk.disabled 的图片是 x.vpk.jpg)
-                    base_name = vpk_stem_for_association(file_name)
-
-                    for ext in ['.jpg', '.png', '.jpeg']:
-                        r_img_path = os.path.join(os.path.dirname(r_path), base_name + ext).replace('\\', '/')
-                        if self.sftp_service.file_exists(config, r_img_path):
-                            l_img_path = os.path.join(local_addons_dir, base_name + ext)
-                            self.sftp_service.download_file(config, r_img_path, l_img_path)
-            
-            return {"success": True, "downloaded_count": success_count}
+            return self.download_service.download(remote_file_paths, local_addons_dir, config)
         except Exception as e:
             logger.error(f"下载远程文件出错: {e}")
             return {"success": False, "error": str(e)}
