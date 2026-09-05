@@ -3,6 +3,7 @@
 from backend.naming import (
     build_export_base_name,
     extract_workshop_id,
+    find_associated_images,
     sanitize_addon_title,
 )
 
@@ -69,3 +70,46 @@ class TestBuildExportBaseName:
     def test_fallback_stem_has_no_id_appended(self):
         # 回退分支不追加工坊 ID(与原三处实现一致)
         assert build_export_base_name(None, "999888777666.vpk", "orig") == "orig"
+
+
+class TestFindAssociatedImages:
+    def test_matches_case_insensitively(self, tmp_path):
+        (tmp_path / "Mod.jpg").write_bytes(b"x")
+        (tmp_path / "mod.PNG").write_bytes(b"x")
+        results = find_associated_images(str(tmp_path), "mod.vpk")
+        assert sorted(ext for _, ext in results) == [".jpg", ".png"]
+
+    def test_dedups_same_ext_different_case(self, tmp_path):
+        (tmp_path / "mod.jpg").write_bytes(b"x")
+        (tmp_path / "mod.JPG").write_bytes(b"x")
+        results = find_associated_images(str(tmp_path), "mod.vpk")
+        assert [ext for _, ext in results] == [".jpg"]
+
+    def test_filters_non_image_and_other_stems(self, tmp_path):
+        (tmp_path / "mod.txt").write_bytes(b"x")
+        (tmp_path / "other.jpg").write_bytes(b"x")
+        assert find_associated_images(str(tmp_path), "mod.vpk") == []
+
+    def test_disabled_default_keeps_vpk_in_stem(self, tmp_path):
+        # 默认(导出/本地化约定):x.vpk.disabled 的图片是 x.vpk.jpg
+        (tmp_path / "mod.vpk.jpg").write_bytes(b"x")
+        (tmp_path / "mod.jpg").write_bytes(b"x")
+        results = find_associated_images(str(tmp_path), "mod.vpk.disabled")
+        assert [ext for _, ext in results] == [".jpg"]
+        assert results[0][0].endswith("mod.vpk.jpg")
+
+    def test_strip_vpk_suffix_for_upload_convention(self, tmp_path):
+        # 上传约定:x.vpk.disabled 的图片是 x.jpg
+        (tmp_path / "mod.jpg").write_bytes(b"x")
+        (tmp_path / "mod.vpk.jpg").write_bytes(b"x")
+        results = find_associated_images(str(tmp_path), "mod.vpk.disabled", strip_vpk_suffix=True)
+        assert [ext for _, ext in results] == [".jpg"]
+        assert results[0][0].endswith("mod.jpg")
+
+    def test_custom_exts(self, tmp_path):
+        (tmp_path / "mod.tga").write_bytes(b"x")
+        results = find_associated_images(str(tmp_path), "mod.vpk", exts=(".tga",))
+        assert len(results) == 1
+
+    def test_missing_directory_returns_empty(self, tmp_path):
+        assert find_associated_images(str(tmp_path / "nope"), "mod.vpk") == []

@@ -10,7 +10,7 @@ import tarfile
 import multiprocessing
 import re
 
-from ..naming import build_export_base_name
+from ..naming import build_export_base_name, find_associated_images
 
 try:
     import zstandard as zstd
@@ -78,34 +78,11 @@ class VpkExportService:
                         print(f"export_vpks: copying {vpk_path} to {dest}")
                         shutil.copy2(vpk_path, dest)
 
-                        # 同时检查并复制同名的图片文件 (缩略图)
-                        # 常见的图片扩展名
-                        image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
-                        vpk_stem_lower = vpk_path.stem.lower()
-                        vpk_parent = vpk_path.parent
-                        
-                        try:
-                            # 扫描目录下所有文件以处理大小写匹配（Windows）
-                            local_files = os.listdir(vpk_parent)
-                            copied_exts_lower = set()
-
-                            for f_name in local_files:
-                                f_path = vpk_parent / f_name
-                                if not f_path.is_file():
-                                    continue
-                                
-                                f_ext = f_path.suffix
-                                f_ext_lower = f_ext.lower()
-                                f_stem_lower = f_path.stem.lower()
-
-                                if f_stem_lower == vpk_stem_lower and f_ext_lower in image_exts:
-                                    if f_ext_lower not in copied_exts_lower:
-                                        img_dest = temp_dir / f"{base_name}{f_ext}"
-                                        print(f"export_vpks: copying associated image {f_path} to {img_dest}")
-                                        shutil.copy2(f_path, img_dest)
-                                        copied_exts_lower.add(f_ext_lower)
-                        except Exception as img_e:
-                            print(f"export_vpks: error scanning associated images: {img_e}")
+                        # 复制同名的关联图片(缩略图),大小写不敏感且每种扩展名只取一次
+                        for f_path, f_ext in find_associated_images(str(vpk_path.parent), vpk_path.name):
+                            img_dest = temp_dir / f"{base_name}{f_ext}"
+                            print(f"export_vpks: copying associated image {f_path} to {img_dest}")
+                            shutil.copy2(f_path, img_dest)
 
                 # Create tar.zst archive with zstandard compression
                 print(f"export_vpks: creating zstandard compressed archive with high compression")

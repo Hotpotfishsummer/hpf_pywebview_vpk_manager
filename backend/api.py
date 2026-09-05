@@ -11,7 +11,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from .models import ApiResponse, VpkFile
-from .naming import build_export_base_name
+from .naming import build_export_base_name, find_associated_images
 from .services.vpk_metadata_service import VpkMetadataService
 from .services.vpk_export_service import VpkExportService
 from .services.vpk_import_service import VpkImportService
@@ -302,47 +302,17 @@ class VpkManagerApi:
                 # 上传 VPK
                 if self.sftp_service.upload_file(config, l_path, r_path):
                     success_count += 1
-                    
-                    # 尝试上传关联图片
-                    src_parent = src_path.parent
-                    
-                    # 确定用于匹配图片的源文件 stem
-                    matching_stem = src_path.stem
-                    if is_disabled and matching_stem.lower().endswith('.vpk'):
-                        matching_stem = matching_stem[:-4]
-                    matching_stem_lower = matching_stem.lower()
-                    
-                    try:
-                        # 获取目录下所有文件，以处理大小写不敏感的文件系统匹配问题
-                        # 避免在 Windows 上重复上传 file.jpg 和 file.JPG
-                        local_files = os.listdir(src_parent)
-                        uploaded_exts_lower = set()
 
-                        for f_name in local_files:
-                            f_path = src_parent / f_name
-                            if not f_path.is_file():
-                                continue
-                            
-                            # 获取真实的文件 stem 和扩展名
-                            f_ext = f_path.suffix
-                            f_ext_lower = f_ext.lower()
-                            f_stem = f_path.stem
-                            
-                            # 处理 .vpk.disabled 文件的 stem
-                            if f_stem.lower().endswith('.vpk'):
-                                f_stem = f_stem[:-4]
-                            
-                            # 匹配基础文件名（忽略大小写）和扩展名
-                            if f_stem.lower() == matching_stem_lower and f_ext_lower in image_exts:
-                                # 每种扩展名（如 .jpg）即使在 Windows 上由于某种原因被匹配多次，也只上传一次
-                                if f_ext_lower not in uploaded_exts_lower:
-                                    # 保持远程文件的后缀与本地实际显示的后缀一致
-                                    remote_img_name = f"{base_name}{f_ext}"
-                                    r_img_path = os.path.join(remote_addons_path, remote_img_name).replace('\\', '/')
-                                    if self.sftp_service.upload_file(config, str(f_path), r_img_path):
-                                        uploaded_exts_lower.add(f_ext_lower)
-                    except Exception as img_e:
-                        logger.error(f"上传关联图片时出错: {img_e}")
+                    # 上传关联图片(对 .vpk.disabled 匹配 x.jpg,保持原行为)
+                    uploaded_exts_lower = set()
+                    for f_path, f_ext in find_associated_images(
+                        str(src_path.parent), src_path.name, image_exts, strip_vpk_suffix=True
+                    ):
+                        if f_ext not in uploaded_exts_lower:
+                            remote_img_name = f"{base_name}{f_ext}"
+                            r_img_path = os.path.join(remote_addons_path, remote_img_name).replace('\\', '/')
+                            if self.sftp_service.upload_file(config, f_path, r_img_path):
+                                uploaded_exts_lower.add(f_ext)
             
             return {"success": True, "uploaded_count": success_count}
         except Exception as e:
