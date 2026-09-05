@@ -29,7 +29,7 @@
                 <button 
                   class="action-icon-btn" 
                   @click.stop="store.openAddonsFolder" 
-                  title="在文件管理器中打开"
+                  :title="$t('openInFileManager')"
                 >
                   <span class="icon">📂</span>
                 </button>
@@ -76,7 +76,7 @@
                 <button 
                   class="action-icon-btn" 
                   @click.stop="store.openWorkshopFolder" 
-                  title="在文件管理器中打开"
+                  :title="$t('openInFileManager')"
                 >
                   <span class="icon">📂</span>
                 </button>

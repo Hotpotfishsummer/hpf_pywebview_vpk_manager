@@ -31,10 +31,10 @@
           v-if="workshopId" 
           @click.stop="openWorkshop" 
           class="workshop-btn"
-          title="在 Steam 创意工坊中查看"
+          :title="$t('viewInWorkshop')"
         >
           <span class="btn-icon">🌐</span>
-          打开创意工坊页面
+          {{ $t("openWorkshopPage") }}
         </button>
       </div>
     </div>

@@ -18,7 +18,7 @@
           :disabled="!store.currentDirectory || store.isImporting"
           class="btn btn-import"
           :class="{ 'btn-loading': store.isImporting }"
-          :title="!store.currentDirectory ? '请先选择 L4D2 目录' : $t('importFiles')"
+          :title="!store.currentDirectory ? $t('needSelectL4d2') : $t('importFiles')"
         >
           <span v-if="store.isImporting" class="btn-spinner"></span>
           <span class="btn-text">{{ store.isImporting ? $t('importing') : $t('importFiles') }}</span>
@@ -28,10 +28,10 @@
           :disabled="isLoading"
           class="btn btn-browse"
           :class="{ 'btn-loading': isLoading }"
-          :title="isLoading ? '浏览中...' : $t('browseFolder')"
+          :title="isLoading ? $t('browsing') : $t('browseFolder')"
         >
           <span v-if="isLoading" class="btn-spinner"></span>
-          <span class="btn-text">{{ isLoading ? '浏览中...' : $t('browseFolder') }}</span>
+          <span class="btn-text">{{ isLoading ? $t('browsing') : $t('browseFolder') }}</span>
         </button>
       </div>
     </div>
@@ -40,7 +40,10 @@
 
 <script setup lang="ts">
 import { useVpkManagerStore } from '@/stores/vpk-manager'
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
+
+const { t: $t } = useI18n()
 
 const store = useVpkManagerStore()
 const isLoading = ref(false)
@@ -54,11 +57,11 @@ async function handleImport() {
       if (result.imported_count > 0) {
         const type = result.success ? 'success' : 'info'
         const msg = result.success 
-          ? `成功导入了 ${result.imported_count} 个文件` 
-          : `导入完成：${result.imported_count} 成功, ${result.errors ? result.errors.length : 0} 失败`
+          ? $t('importSuccess', { count: result.imported_count }) 
+          : $t('importDonePartial', { success: result.imported_count, failed: result.errors ? result.errors.length : 0 })
         store.showNotification(msg, type)
       } else if (result.error) {
-        store.showNotification(`导入失败: ${result.error}`, 'error')
+        store.showNotification($t('importFailedWithError', { error: result.error }), 'error')
       }
     }
   } catch (error) {
@@ -80,7 +83,7 @@ async function handleBrowse() {
     }
     
     if (!(window.pywebview && window.pywebview.api)) {
-      store.showNotification('PyWebView API 未初始化，请刷新页面', 'error')
+      store.showNotification($t('apiNotInitialized'), 'error')
       return
     }
     
@@ -90,7 +93,7 @@ async function handleBrowse() {
       await store.scanVpks(selectedPath)
     }
   } catch (error) {
-    store.showNotification(`文件夹选择出错: ${error instanceof Error ? error.message : String(error)}`, 'error')
+    store.showNotification($t('browseError', { error: error instanceof Error ? error.message : String(error) }), 'error')
     console.error('选择文件夹失败:', error)
   } finally {
     isLoading.value = false

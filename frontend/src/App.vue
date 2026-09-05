@@ -31,7 +31,7 @@
             @click="store.isSftpActive = !store.isSftpActive" 
             class="sftp-toggle-btn" 
             :class="{ active: store.isSftpActive }"
-            :title="store.isSftpActive ? '关闭 SFTP' : '开启 SFTP'"
+            :title="store.isSftpActive ? $t('sftpDisable') : $t('sftpEnable')"
           >
             🌐
           </button>
@@ -71,7 +71,7 @@
             >
               <span class="btn-icon" v-if="!store.isExporting">⬇️</span>
               <span class="btn-spinner" v-else></span>
-              {{ store.isExporting ? $t('exporting') : '导出文件' }}
+              {{ store.isExporting ? $t('exporting') : $t('exportFiles') }}
             </button>
             <button 
               v-if="store.selectedWorkshopVpks.size > 0 && store.selectedLocalVpks.size === 0"
@@ -83,7 +83,7 @@
             >
               <span class="btn-icon" v-if="!store.isLocalizing">📦</span>
               <span class="btn-spinner" v-else></span>
-              {{ store.isLocalizing ? '正在转换...' : $t('localize') }}
+              {{ store.isLocalizing ? $t('converting') : $t('localize') }}
             </button>
             <button 
               v-if="store.isSftpActive && (store.selectedLocalVpks.size > 0 || store.selectedWorkshopVpks.size > 0)"
@@ -102,7 +102,7 @@
               class="btn btn-disable"
             >
               <span class="btn-icon">🚫</span>
-              {{ store.isDeleting ? '处理中...' : '禁用' }}
+              {{ store.isDeleting ? $t('processing') : $t('disable') }}
             </button>
             <button 
               @click="handleEnable"
@@ -110,7 +110,7 @@
               class="btn btn-enable"
             >
               <span class="btn-icon">✔️</span>
-              {{ store.isDeleting ? '处理中...' : '启用' }}
+              {{ store.isDeleting ? $t('processing') : $t('enable') }}
             </button>
             <button 
               @click="handleDelete"
@@ -118,7 +118,7 @@
               class="btn btn-delete"
             >
               <span class="btn-icon">🗑️</span>
-              {{ store.isDeleting ? '删除中...' : '彻底删除' }}
+              {{ store.isDeleting ? $t('deleting') : $t('hardDelete') }}
             </button>
 
             <!-- Better Naming Checkbox -->
@@ -138,7 +138,7 @@
             <div class="progress-bar">
               <div class="progress-fill"></div>
             </div>
-            <span class="progress-text">正在打包文件...</span>
+            <span class="progress-text">{{ $t("packingFiles") }}</span>
           </div>
         </div>
       </div>
@@ -170,8 +170,8 @@
         <section v-else class="empty-state">
           <div class="empty-content">
             <span class="empty-icon">📁</span>
-            <h2>未找到 VPK 文件</h2>
-            <p>请选择包含 VPK 文件的目录</p>
+            <h2>{{ $t("noVpkFilesHeading") }}</h2>
+            <p>{{ $t("selectDirWithVpks") }}</p>
           </div>
         </section>
 

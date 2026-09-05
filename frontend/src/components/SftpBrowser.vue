@@ -4,7 +4,7 @@
       <div class="header-info">
         <h3>🌐 {{ $t('remoteAddons') }}</h3>
         <span class="path-badge" :title="store.sftpSettings.addons_path">
-          {{ store.sftpSettings.addons_path || '未配置路径' }}
+          {{ store.sftpSettings.addons_path || $t('pathNotConfigured') }}
         </span>
       </div>
       <button @click="store.scanRemoteVpks()" class="btn-refresh" :disabled="store.isRemoteScanning">
