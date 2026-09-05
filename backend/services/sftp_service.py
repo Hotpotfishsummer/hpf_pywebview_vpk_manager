@@ -102,6 +102,37 @@ class SftpService:
             logger.error(f"重命名远程文件失败 {old_path} -> {new_path}: {e}")
             return False
 
+    # VPK 关联的图片/文本文件扩展名(与本地批量禁用/删除逻辑一致)
+    ASSOCIATED_EXTS = ('.jpg', '.png', '.jpeg', '.txt')
+
+    def rename_file_with_images(self, config: Dict[str, str], old_path: str, new_path: str) -> bool:
+        """重命名远程 VPK,并同步重命名同名关联图片(对齐本地禁用/启用行为)"""
+        if not self.rename_file(config, old_path, new_path):
+            return False
+
+        old_base = os.path.splitext(old_path)[0]
+        new_base = os.path.splitext(new_path)[0]
+        for ext in self.ASSOCIATED_EXTS:
+            old_img = old_base + ext
+            new_img = new_base + ext
+            if self.file_exists(config, old_img):
+                if not self.rename_file(config, old_img, new_img):
+                    logger.warning(f"关联文件重命名失败(忽略): {old_img} -> {new_img}")
+        return True
+
+    def delete_file_with_images(self, config: Dict[str, str], file_path: str) -> bool:
+        """删除远程 VPK,并同步删除同名关联图片(对齐本地删除行为)"""
+        if not self.delete_file(config, file_path):
+            return False
+
+        base = os.path.splitext(file_path)[0]
+        for ext in self.ASSOCIATED_EXTS:
+            img = base + ext
+            if self.file_exists(config, img):
+                if not self.delete_file(config, img):
+                    logger.warning(f"关联文件删除失败(忽略): {img}")
+        return True
+
     def download_file(self, config: Dict[str, str], remote_path: str, local_path: str) -> bool:
         """从远端下载文件到本地"""
         try:

@@ -192,7 +192,7 @@ class VpkManagerApi:
         """删除远程 SFTP 服务器上的 VPK 文件"""
         try:
             config = self.storage_service.get_sftp_settings()
-            success = self.sftp_service.delete_file(config, file_path)
+            success = self.sftp_service.delete_file_with_images(config, file_path)
             if success:
                 return {"success": True}
             else:
@@ -208,7 +208,7 @@ class VpkManagerApi:
             success_count = 0
             errors = []
             for path in file_paths:
-                if self.sftp_service.delete_file(config, path):
+                if self.sftp_service.delete_file_with_images(config, path):
                     success_count += 1
                 else:
                     errors.append(path)
@@ -227,7 +227,7 @@ class VpkManagerApi:
         """重命名远程 SFTP 服务器上的 VPK 文件 (用于禁用/启用)"""
         try:
             config = self.storage_service.get_sftp_settings()
-            success = self.sftp_service.rename_file(config, old_path, new_path)
+            success = self.sftp_service.rename_file_with_images(config, old_path, new_path)
             if success:
                 return {"success": True}
             else:
