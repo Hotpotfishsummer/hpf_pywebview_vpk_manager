@@ -20,6 +20,7 @@ from .services.sftp_service import SftpService
 from .services.config_service import ConfigService
 from .services.vpk_localize_service import VpkLocalizeService
 from .services.vpk_scan_service import VpkScanService
+from .services.vpk_upload_service import VpkUploadService
 
 # 确保存储目录存在
 STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
@@ -86,6 +87,8 @@ class VpkManagerApi:
         logger.info("  - VpkLocalizeService 初始化完成")
         self.scan_service = VpkScanService(self.metadata_service)
         logger.info("  - VpkScanService 初始化完成")
+        self.upload_service = VpkUploadService(self.metadata_service, self.sftp_service)
+        logger.info("  - VpkUploadService 初始化完成")
         
         # 获取应用根目录
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -282,41 +285,8 @@ class VpkManagerApi:
             remote_addons_path = config.get('addons_path', '')
             if not remote_addons_path:
                 return {"success": False, "error": "未配置远程 addons 路径"}
-            
-            success_count = 0
-            image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
 
-            for l_path in local_file_paths:
-                # 确定文件名
-                src_path = Path(l_path)
-                base_name = src_path.stem
-                is_disabled = l_path.lower().endswith('.vpk.disabled')
-
-                if better_naming:
-                    title = self.metadata_service.get_addontitle(l_path)
-                    base_name = build_export_base_name(title, src_path.name, src_path.stem)
-                
-                # 远程 VPK 文件名
-                suffix = ".vpk.disabled" if is_disabled else ".vpk"
-                dest_file_name = f"{base_name}{suffix}"
-                r_path = os.path.join(remote_addons_path, dest_file_name).replace('\\', '/')
-                
-                # 上传 VPK
-                if self.sftp_service.upload_file(config, l_path, r_path):
-                    success_count += 1
-
-                    # 上传关联图片(对 .vpk.disabled 匹配 x.jpg,保持原行为)
-                    uploaded_exts_lower = set()
-                    for f_path, f_ext in find_associated_images(
-                        str(src_path.parent), src_path.name, image_exts, strip_vpk_suffix=True
-                    ):
-                        if f_ext not in uploaded_exts_lower:
-                            remote_img_name = f"{base_name}{f_ext}"
-                            r_img_path = os.path.join(remote_addons_path, remote_img_name).replace('\\', '/')
-                            if self.sftp_service.upload_file(config, f_path, r_img_path):
-                                uploaded_exts_lower.add(f_ext)
-            
-            return {"success": True, "uploaded_count": success_count}
+            return self.upload_service.upload(local_file_paths, remote_addons_path, config, better_naming)
         except Exception as e:
             logger.error(f"上传本地文件出错: {e}")
             return {"success": False, "error": str(e)}
