@@ -75,10 +75,20 @@ python main.py
 ├── main.py                        # PyWebView 应用入口
 ├── environment.yml                # Conda 环境配置
 ├── requirements.txt               # Python 依赖
+├── pytest.ini                     # pytest 配置
+│
+├── tests/                         # 后端单元测试（pytest）
+│   ├── conftest.py
+│   ├── test_models.py
+│   ├── test_naming.py
+│   ├── test_metadata_service.py
+│   ├── test_export_service.py
+│   ├── test_import_service.py
+│   └── test_vpk_ops.py
 │
 ├── frontend/                      # Vue3 前端应用
 │   ├── src/
-│   │   ├── components/            # Vue 组件
+│   │   ├── components/            # Vue 组件（DirectorySelector / VpkFilesList / VpkFileItem / SftpBrowser / SettingsModal）
 │   │   ├── stores/                # Pinia 状态管理
 │   │   ├── composables/           # Vue 组件钩子
 │   │   ├── i18n/                  # 国际化配置和翻译文件
@@ -91,10 +101,14 @@ python main.py
 ├── backend/                       # Python 后端
 │   ├── api.py                     # PyWebView API 接口
 │   ├── models.py                  # 数据模型
+│   ├── naming.py                  # 共享的 VPK 命名/清洗逻辑
 │   └── services/
-│       ├── vpk_metadata_service.py    # VPK 元数据提取
+│       ├── vpk_metadata_service.py    # VPK 元数据提取（带 mtime/size 缓存失效校验）
 │       ├── vpk_export_service.py      # VPK 导出和压缩
-│       └── storage_service.py         # 用户偏好存储
+│       ├── vpk_import_service.py      # 压缩包（zip/7z/tar.zst）导入
+│       ├── storage_service.py         # 用户偏好存储
+│       ├── sftp_service.py            # SFTP 远程文件管理
+│       └── config_service.py          # autoexec.cfg 配置管理
 │
 ├── scripts/                       # 自动化脚本
 │   ├── build-frontend.ps1         # 构建前端
@@ -159,6 +173,17 @@ const deleteResult = await window.api.delete_vpk_file(
   <p>{{ $t('error', { error: 'File not found' }) }}</p>
 </template>
 ```
+
+## 测试
+
+后端单元测试基于 pytest（运行前先激活 conda 环境并安装 `pip install pytest`）：
+
+```bash
+conda activate hpf-vpk-manager-pywebview
+python -m pytest
+```
+
+测试覆盖：VPK 命名清洗逻辑（`backend/naming.py`）、元数据提取与缓存失效、导入/导出的纯函数、单文件/批量禁用删除操作。全部使用临时目录，不触碰真实用户数据。
 
 ## VS Code 快捷键和任务
 
@@ -290,4 +315,4 @@ MIT License - 详见 LICENSE 文件
 
 ---
 
-**最后更新：** 2026年1月21日
+**最后更新：** 2026年9月6日
