@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import i18n from '@/i18n'
+import { getApi } from '@/composables/useApi'
 
 // 组件外使用 vue-i18n 的全局实例,保证通知文案跟随当前语言
 const $t = i18n.global.t
@@ -116,7 +117,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     showNotification('', 'info') // 清除之前的消息
 
     try {
-      const result = await (window as any).pywebview.api.scan_vpk_files(directory)
+      const result = await getApi().scan_vpk_files(directory)
 
       if (result.success) {
         currentDirectory.value = directory
@@ -145,7 +146,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     showNotification('', 'info')
 
     try {
-      const result = await (window as any).pywebview.api.import_compressed_vpks()
+      const result = await getApi().import_compressed_vpks()
 
       if (result.success) {
         // 导入成功，刷新列表
@@ -172,7 +173,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     showNotification('', 'info')
 
     try {
-      const result = await (window as any).pywebview.api.localize_workshop_vpks(
+      const result = await getApi().localize_workshop_vpks(
         paths, 
         useBetterNaming.value
       )
@@ -208,7 +209,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     console.log('Initializing VpkManager store...')
     try {
       // 加载上次目录
-      const lastDir = await (window as any).pywebview.api.get_last_directory()
+      const lastDir = await getApi().get_last_directory()
       if (lastDir) {
         console.log('Last directory found:', lastDir)
         await scanVpks(lastDir)
@@ -217,7 +218,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       }
 
       // 加载 SFTP 设置
-      const settings = await (window as any).pywebview.api.get_sftp_settings()
+      const settings = await getApi().get_sftp_settings()
       if (settings) {
         Object.assign(sftpSettings, settings)
       }
@@ -228,7 +229,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
 
   async function saveSftpSettings() {
     try {
-      const result = await (window as any).pywebview.api.save_sftp_settings({ ...sftpSettings })
+      const result = await getApi().save_sftp_settings({ ...sftpSettings })
       if (!result.success) {
         showNotification(result.error || '保存 SFTP 设置失败', 'error')
       }
@@ -260,7 +261,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   async function scanRemoteVpks() {
     isRemoteScanning.value = true
     try {
-      const result = await (window as any).pywebview.api.list_remote_vpks()
+      const result = await getApi().list_remote_vpks()
       if (result.success) {
         remoteVpkFiles.value = result.files || []
         selectedRemoteVpks.clear() // 扫描后清除之前的选中
@@ -276,7 +277,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
 
   async function deleteRemoteVpk(path: string) {
     try {
-      const result = await (window as any).pywebview.api.delete_remote_vpk(path)
+      const result = await getApi().delete_remote_vpk(path)
       if (result.success) {
         showNotification($t('remoteDeleted'), 'success')
         await scanRemoteVpks()
@@ -294,7 +295,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     
     isDeleting.value = true
     try {
-      const result = await (window as any).pywebview.api.delete_multiple_remote_vpks(paths)
+      const result = await getApi().delete_multiple_remote_vpks(paths)
       if (result.success) {
         showNotification($t('remoteDeletedSelected'), 'success')
       } else if (result.success_count > 0) {
@@ -318,7 +319,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     try {
       let successCount = 0
       for (const path of paths) {
-        const result = await (window as any).pywebview.api.rename_remote_vpk(path, `${path}.disabled`)
+        const result = await getApi().rename_remote_vpk(path, `${path}.disabled`)
         if (result.success) successCount++
       }
       showNotification($t('remoteDisabled', { count: successCount }), 'success')
@@ -338,7 +339,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     try {
       let successCount = 0
       for (const path of paths) {
-        const result = await (window as any).pywebview.api.rename_remote_vpk(path, path.substring(0, path.length - 9))
+        const result = await getApi().rename_remote_vpk(path, path.substring(0, path.length - 9))
         if (result.success) successCount++
       }
       showNotification($t('remoteEnabled', { count: successCount }), 'success')
@@ -357,7 +358,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     isDownloading.value = true
     showNotification($t('downloadingRemote'), 'info')
     try {
-      const result = await (window as any).pywebview.api.download_remote_vpks(paths)
+      const result = await getApi().download_remote_vpks(paths)
       if (result.success) {
         showNotification($t('downloadSuccess', { count: result.downloaded_count }), 'success')
         // 刷新本地列表
@@ -381,7 +382,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     isUploading.value = true
     showNotification($t('uploadingLocal'), 'info')
     try {
-      const result = await (window as any).pywebview.api.upload_local_vpks(
+      const result = await getApi().upload_local_vpks(
         paths, 
         useBetterNaming.value
       )
@@ -404,13 +405,13 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   async function openAddonsFolder() {
     if (!currentDirectory.value) return
     const path = `${currentDirectory.value}/left4dead2/addons`
-    await (window as any).pywebview.api.open_directory(path)
+    await getApi().open_directory(path)
   }
 
   async function openWorkshopFolder() {
     if (!currentDirectory.value) return
     const path = `${currentDirectory.value}/left4dead2/addons/workshop`
-    await (window as any).pywebview.api.open_directory(path)
+    await getApi().open_directory(path)
   }
 
   async function exportVpks(outputDir: string) {
@@ -424,7 +425,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     showNotification('', 'info')
 
     try {
-      const result = await (window as any).pywebview.api.export_vpks(
+      const result = await getApi().export_vpks(
         paths, 
         outputDir, 
         useBetterNaming.value
@@ -459,7 +460,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
 
     try {
       // Use batch delete method for better performance
-      const result = await (window as any).pywebview.api.delete_multiple_vpk_files(paths, disable)
+      const result = await getApi().delete_multiple_vpk_files(paths, disable)
       
       if (!result.success && result.error_count > 0) {
         showNotification($t('deletePartialFailed', { count: result.error_count }), 'error')
@@ -494,7 +495,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
 
   async function getLastDirectory() {
     try {
-      const lastDir = await (window as any).pywebview.api.get_last_directory()
+      const lastDir = await getApi().get_last_directory()
       if (lastDir) {
         return lastDir
       }
