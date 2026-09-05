@@ -18,6 +18,7 @@ from .services.vpk_import_service import VpkImportService
 from .services.storage_service import StorageService
 from .services.sftp_service import SftpService
 from .services.config_service import ConfigService
+from .services.vpk_localize_service import VpkLocalizeService
 
 # 确保存储目录存在
 STORAGE_BASE_DIR = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
@@ -80,6 +81,8 @@ class VpkManagerApi:
         logger.info("  - StorageService 初始化完成")
         self.sftp_service = SftpService()
         logger.info("  - SftpService 初始化完成")
+        self.localize_service = VpkLocalizeService(self.metadata_service)
+        logger.info("  - VpkLocalizeService 初始化完成")
         
         # 获取应用根目录
         base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -762,84 +765,7 @@ class VpkManagerApi:
             if not os.path.exists(addons_dir):
                 os.makedirs(addons_dir, exist_ok=True)
 
-            # 在创意工坊文件夹下创建 .trash 文件夹
-            workshop_base_dir = os.path.join(l4d2_dir, "left4dead2", "addons", "workshop")
-            trash_dir = os.path.join(workshop_base_dir, ".trash")
-            if not os.path.exists(trash_dir):
-                os.makedirs(trash_dir, exist_ok=True)
-
-            success_count = 0
-            errors = []
-
-            for src_path_str in file_paths:
-                try:
-                    src_path = Path(src_path_str).absolute()
-                    if not src_path.exists():
-                        errors.append(f"文件不存在: {src_path.name}")
-                        continue
-
-                    # 检查该文件是否确实在创意工坊目录下 (防止非预期移动)
-                    # 使用 Path 对象的部分匹配更健壮
-                    is_in_workshop = "workshop" in [p.name.lower() for p in src_path.parents]
-
-                    # 基础名称处理
-                    base_name = src_path.stem
-                    if better_naming:
-                        vpk_meta = self.metadata_service.get_vpk_metadata(src_path_str)
-                        if vpk_meta and vpk_meta.addontitle:
-                            base_name = build_export_base_name(
-                                vpk_meta.addontitle, src_path.name, src_path.stem
-                            )
-
-                    # 目标 VPK 路径
-                    dest_vpk = Path(addons_dir) / f"{base_name}.vpk"
-                    
-                    # 复制 VPK 到 addons (如果是禁用状态的文件，这里也统一恢复为 .vpk)
-                    shutil.copy2(src_path, dest_vpk)
-                    
-                    # 尝试复制并重命名同名图片到 addons(大小写不敏感扫描)
-                    src_parent = src_path.parent
-                    associated_files = []  # 记录关联文件路径用于后续移动
-
-                    for img_src, _ext in find_associated_images(str(src_parent), src_path.name):
-                        # 图片也按照 VPK 的新名称命名，但保留原本后缀
-                        dest_img = Path(addons_dir) / f"{base_name}{Path(img_src).suffix}"
-                        shutil.copy2(img_src, dest_img)
-                        associated_files.append(Path(img_src))
-                    
-                    # 本地化成功后，移动创意工坊下的原文件到 .trash
-                    if is_in_workshop:
-                        # 移动 VPK (确保目标文件不存在，如果存在先尝试删除)
-                        trash_vpk_path = os.path.join(trash_dir, src_path.name)
-                        if os.path.exists(trash_vpk_path):
-                            try:
-                                os.remove(trash_vpk_path)
-                            except:
-                                pass
-                        
-                        if src_path.exists():
-                            shutil.move(str(src_path), trash_vpk_path)
-                        
-                        # 移动关联图片
-                        for img_path in associated_files:
-                            if img_path.exists():
-                                trash_img_path = os.path.join(trash_dir, img_path.name)
-                                if os.path.exists(trash_img_path):
-                                    try:
-                                        os.remove(trash_img_path)
-                                    except:
-                                        pass
-                                shutil.move(str(img_path), trash_img_path)
-                    
-                    success_count += 1
-                except Exception as e:
-                    errors.append(f"本地化 {os.path.basename(src_path_str)} 失败: {str(e)}")
-
-            return {
-                "success": len(errors) == 0,
-                "success_count": success_count,
-                "errors": errors if errors else None
-            }
+            return self.localize_service.localize(file_paths, l4d2_dir, better_naming)
         except Exception as e:
             logger.error(f"本地化创意工坊文件出错: {e}")
             return {"success": False, "error": str(e)}
