@@ -53,6 +53,7 @@ class VpkManagerApi:
         'open_directory',
         'delete_vpk_file',
         'delete_multiple_vpk_files',
+        'enable_vpk_file',
         'reset_app_data',
         'log_from_js',
         'get_sftp_settings',
@@ -623,25 +624,51 @@ class VpkManagerApi:
             logger.info(
                 f"{'禁用' if disable else '删除'} VPK 文件: {file_path}"
             )
-
-            if not os.path.exists(file_path):
-                return {"success": False, "error": f"文件不存在: {file_path}"}
-
-            if disable:
-                # 重命名为 .vpk.disabled
-                new_path = f"{file_path}.disabled"
-                if os.path.exists(new_path):
-                    os.remove(new_path)
-                os.rename(file_path, new_path)
-            else:
-                # 删除文件
-                os.remove(file_path)
-
+            self._disable_or_delete_single(file_path, disable)
             return {"success": True, "message": f"文件{'禁用' if disable else '删除'}成功"}
-
         except Exception as e:
             logger.error(f"处理 VPK 文件出错: {e}")
             return {"success": False, "error": str(e)}
+
+    @staticmethod
+    def _disable_or_delete_single(file_path: str, disable: bool) -> None:
+        """禁用/删除单个 VPK 文件及其关联图片，失败时抛异常。
+
+        与批量版行为一致：对已 .disabled 的文件执行 disable 是 toggle
+        （移除后缀恢复启用）；重命名/删除 VPK 时同步处理同名
+        .jpg/.png/.jpeg/.txt 文件。
+        """
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+
+        if disable:
+            if file_path.endswith(".disabled"):
+                new_path = file_path[:-9]  # 启用: 移除 .disabled
+            else:
+                new_path = f"{file_path}.disabled"
+
+            # 同步重命名关联的图片/文本文件
+            old_base = os.path.splitext(file_path)[0]
+            new_base = os.path.splitext(new_path)[0]
+            for ext in ['.jpg', '.png', '.jpeg', '.txt']:
+                old_img = old_base + ext
+                new_img = new_base + ext
+                if os.path.exists(old_img):
+                    if os.path.exists(new_img):
+                        os.remove(new_img)
+                    os.rename(old_img, new_img)
+
+            if os.path.exists(new_path):
+                os.remove(new_path)
+            os.rename(file_path, new_path)
+        else:
+            # 同步删除关联的图片/文本文件
+            base_stem = os.path.splitext(file_path)[0]
+            for ext in ['.jpg', '.png', '.jpeg', '.txt']:
+                img_path = base_stem + ext
+                if os.path.exists(img_path):
+                    os.remove(img_path)
+            os.remove(file_path)
 
     def enable_vpk_file(self, file_path: str) -> dict:
         """通过移除 .disabled 后缀启用禁用的 VPK 文件。
@@ -695,45 +722,7 @@ class VpkManagerApi:
 
             for file_path in file_paths:
                 try:
-                    if not os.path.exists(file_path):
-                        error_count += 1
-                        errors.append(f"File not found: {file_path}")
-                        continue
-
-                    if disable:
-                        if file_path.endswith(".disabled"):
-                            new_path = file_path[:-9]  # Remove .disabled
-                        else:
-                            new_path = f"{file_path}.disabled"
-                        
-                        # 同时也重命名关联的图片文件
-                        parent_dir = os.path.dirname(file_path)
-                        old_base = os.path.splitext(file_path)[0]
-                        new_base = os.path.splitext(new_path)[0]
-                        
-                        for ext in ['.jpg', '.png', '.jpeg', '.txt']:
-                            old_img = old_base + ext
-                            new_img = new_base + ext
-                            if os.path.exists(old_img):
-                                if os.path.exists(new_img):
-                                    os.remove(new_img)
-                                os.rename(old_img, new_img)
-
-                        if os.path.exists(new_path):
-                            os.remove(new_path)
-                        os.rename(file_path, new_path)
-                    else:
-                        # 同时也删除关联的图片文件
-                        parent_dir = os.path.dirname(file_path)
-                        base_stem = os.path.splitext(file_path)[0]
-                        # 检查多种扩展名
-                        for ext in ['.jpg', '.png', '.jpeg', '.txt']:
-                            img_path = base_stem + ext
-                            if os.path.exists(img_path):
-                                os.remove(img_path)
-
-                        os.remove(file_path)
-
+                    self._disable_or_delete_single(file_path, disable)
                     success_count += 1
                     logger.info(f"Successfully {'disabled' if disable else 'deleted'} {file_path}")
 
