@@ -169,10 +169,11 @@ class SftpService:
             return False
 
     def close(self):
-        """关闭连接"""
+        """关闭连接并释放线程池(应用退出或主动断开时调用)"""
         if self._sftp:
             self._sftp.close()
         if self._ssh_client:
             self._ssh_client.close()
         self._sftp = None
         self._ssh_client = None
+        self._executor.shutdown(wait=False)

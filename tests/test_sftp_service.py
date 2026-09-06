@@ -142,3 +142,19 @@ class TestConnection:
         with pytest.raises(ValueError):
             svc._get_client({"address": "host"})
         ssh.connect.assert_not_called()
+
+
+class TestCloseLifecycle:
+    def test_close_shuts_down_executor_and_clears_state(self):
+        svc = SftpService()
+        executor = svc._executor
+        svc.close()
+
+        assert svc._sftp is None
+        assert svc._ssh_client is None
+        assert executor._shutdown is True
+
+    def test_close_is_idempotent(self):
+        svc = SftpService()
+        svc.close()
+        svc.close()  # 二次调用不应抛错
