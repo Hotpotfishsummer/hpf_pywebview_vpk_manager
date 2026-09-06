@@ -291,3 +291,29 @@ class TestDefensiveBranches:
     def test_parse_addontitle_non_string_content_returns_none(self):
         svc = VpkMetadataService.__new__(VpkMetadataService)
         assert svc._parse_addontitle(12345) is None  # 非 str 触发异常分支
+
+
+class TestThumbnailPriority:
+    def test_jpg_preferred_over_png(self, tmp_path):
+        """同名多格式缩略图按 jpg > png > jpeg 优先"""
+        vpk_file = tmp_path / "mod.vpk"
+        vpk_file.write_bytes(b"x")
+        (tmp_path / "mod.png").write_bytes(b"png")
+        (tmp_path / "mod.jpg").write_bytes(b"jpg")
+
+        svc = _make_service(tmp_path)
+        meta = svc.get_vpk_metadata(str(vpk_file))
+
+        assert meta is not None
+        assert meta.thumbnail_path.startswith("data:image/jpeg")
+
+    def test_png_used_when_no_jpg(self, tmp_path):
+        vpk_file = tmp_path / "mod.vpk"
+        vpk_file.write_bytes(b"x")
+        (tmp_path / "mod.png").write_bytes(b"png")
+
+        svc = _make_service(tmp_path)
+        meta = svc.get_vpk_metadata(str(vpk_file))
+
+        assert meta is not None
+        assert meta.thumbnail_path.startswith("data:image/png")
