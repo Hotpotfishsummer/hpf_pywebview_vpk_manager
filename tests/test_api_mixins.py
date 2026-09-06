@@ -333,3 +333,114 @@ class TestAppApiMixinDeep:
         import backend.api_app as mod
         monkeypatch.setattr(mod.Path, "home", lambda: tmp_path)
         assert host.reset_app_data() is True
+
+
+class TestOpsApiMixinDeep:
+    """VPK 核心操作 mixin 的分支覆盖(tmp 真实文件,不触碰用户数据)"""
+
+    def _make_env(self, tmp_path):
+        host = OpsHost()
+        addons = tmp_path / "addons"
+        addons.mkdir()
+        return host, addons
+
+    def test_scan_service_exception_returns_error(self, tmp_path):
+        host, addons = self._make_env(tmp_path)
+        host.scan_service.scan.side_effect = RuntimeError("scan boom")
+
+        result = host.scan_vpk_files(str(addons))
+
+        assert result["success"] is False
+        assert "scan boom" in result["error"]
+        assert host._is_scanning is False
+
+    def test_delete_vpk_disable_with_associated_images(self, tmp_path):
+        host, addons = self._make_env(tmp_path)
+        (addons / "mod.vpk").write_bytes(b"x")
+        (addons / "mod.jpg").write_bytes(b"img")
+
+        result = host.delete_vpk_file(str(addons / "mod.vpk"), disable=True)
+
+        assert result["success"] is True
+        assert (addons / "mod.vpk.disabled").exists()
+        assert not (addons / "mod.vpk").exists()
+        # 项目约定:x.vpk 禁用后图片为 x.vpk.jpg(与缩略图扫描一致)
+        assert (addons / "mod.vpk.jpg").exists()
+        assert not (addons / "mod.jpg").exists()
+
+    def test_delete_vpk_hard_delete_with_images(self, tmp_path):
+        host, addons = self._make_env(tmp_path)
+        (addons / "mod.vpk.disabled").write_bytes(b"x")
+        (addons / "mod.vpk.jpg").write_bytes(b"img")
+
+        result = host.delete_vpk_file(str(addons / "mod.vpk.disabled"), disable=False)
+
+        assert result["success"] is True
+        assert not (addons / "mod.vpk.disabled").exists()
+        assert not (addons / "mod.vpk.jpg").exists()
+
+    def test_enable_vpk_file_branches(self, tmp_path):
+        host, addons = self._make_env(tmp_path)
+
+        # 文件不存在
+        result = host.enable_vpk_file(str(addons / "ghost.vpk.disabled"))
+        assert "文件不存在" in result["error"]
+
+        # 未禁用
+        (addons / "live.vpk").write_bytes(b"x")
+        result = host.enable_vpk_file(str(addons / "live.vpk"))
+        assert "文件未被禁用" in result["error"]
+
+        # 目标已存在
+        (addons / "off.vpk.disabled").write_bytes(b"x")
+        (addons / "off.vpk").write_bytes(b"x")
+        result = host.enable_vpk_file(str(addons / "off.vpk.disabled"))
+        assert "文件已存在" in result["error"]
+
+        # 正常启用
+        (addons / "ok.vpk.disabled").write_bytes(b"x")
+        result = host.enable_vpk_file(str(addons / "ok.vpk.disabled"))
+        assert result["success"] is True
+        assert (addons / "ok.vpk").exists()
+
+    def test_delete_multiple_with_failures(self, tmp_path, monkeypatch):
+        host, addons = self._make_env(tmp_path)
+        (addons / "a.vpk").write_bytes(b"x")
+        (addons / "b.vpk").write_bytes(b"x")
+
+        real = OpsHost._disable_or_delete_single.__func__ if hasattr(OpsHost._disable_or_delete_single, "__func__") else OpsHost._disable_or_delete_single
+
+        def flaky(file_path, disable):
+            if file_path.endswith("b.vpk"):
+                raise IOError("perm")
+        monkeypatch.setattr(OpsHost, "_disable_or_delete_single", staticmethod(flaky))
+
+        result = host.delete_multiple_vpk_files(
+            [str(addons / "a.vpk"), str(addons / "b.vpk")], disable=True
+        )
+
+        assert result["success"] is False
+        assert result["success_count"] == 1
+        assert result["error_count"] == 1
+
+    def test_export_failure_returns_error(self, tmp_path):
+        host, addons = self._make_env(tmp_path)
+        host.export_service.export_vpks.side_effect = RuntimeError("zstd boom")
+
+        result = host.export_vpks(["/a.vpk"], str(addons))
+
+        assert result["success"] is False
+        assert "zstd boom" in result["error"]
+        assert host._is_exporting is False
+
+    def test_localize_delegates(self, tmp_path):
+        host, addons = self._make_env(tmp_path)
+        host.localize_service.localize.return_value = {"success": True, "success_count": 3}
+        host.storage_service.get_l4d2_directory.return_value = str(tmp_path)
+
+        result = host.localize_workshop_vpks(["/a.vpk"], better_naming=True)
+
+        assert result["success_count"] == 3
+        args = host.localize_service.localize.call_args
+        assert args.args[1] == str(tmp_path)
+        assert args.args[2] is True
