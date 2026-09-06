@@ -80,7 +80,7 @@ python main.py
 ├── requirements.txt               # Python 依赖
 ├── pytest.ini                     # pytest 配置
 │
-├── tests/                         # 后端单元测试（pytest，185+ 用例）
+├── tests/                         # 后端单元测试（pytest，240+ 用例）
 │   ├── conftest.py
 │   ├── test_models.py
 │   ├── test_naming.py
@@ -200,7 +200,7 @@ const deleteResult = await getApi().delete_vpk_file(
 
 ```bash
 conda activate hpf-vpk-manager-pywebview
-python -m pytest -q                      # 全量运行（190 用例）
+python -m pytest -q                      # 全量运行（240+ 用例）
 python -m pytest -q --cov=backend        # 带覆盖率
 ```
 
