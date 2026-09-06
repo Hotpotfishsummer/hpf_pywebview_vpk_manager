@@ -206,10 +206,11 @@ python -m pytest -q --cov=backend        # 带覆盖率
 
 测试覆盖：VPK 命名清洗与边界（`backend/naming.py`）、元数据提取与缓存失效、导入/导出全链路（含 7z 路径穿越防护）、SFTP 服务（mock）、上传/下载/本地化/扫描服务、依赖清单一致性守卫、未使用 i18n 键守卫、en/zh 占位符一致性、真实 VPK 构造的标题编码链路。全部使用临时目录或 mock，不触碰真实用户数据。
 
-前端类型检查：
+前端类型检查与单元测试（vitest，`npm run test`）：
 
 ```bash
 cd frontend && npm run typecheck
+cd frontend && npm run test
 ```
 
 ## 持续集成
