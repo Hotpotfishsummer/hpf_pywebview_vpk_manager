@@ -1,6 +1,7 @@
 """StorageService 的单元测试(monkeypatch Path.home 隔离 + 单例重置)"""
 
 import json
+import pathlib
 
 import pytest
 
@@ -127,3 +128,33 @@ class TestNestedValues:
         value = {"deep": {"list": [1, 2, 3]}, "flag": True}
         svc.set("complex", value)
         assert svc.get("complex") == value
+
+
+class TestErrorResilience:
+    def test_corrupt_rename_failure_still_returns_empty(self, isolated_storage, monkeypatch):
+        """损坏文件重命名失败(如被占用)时静默降级,不崩溃"""
+        home, _ = isolated_storage
+        storage_dir = home / "Documents" / "L4D2-VPK-Manager"
+        (storage_dir / "preferences.json").write_text("{bad", encoding="utf-8")
+
+        def boom(*a, **k):
+            raise OSError("locked")
+        monkeypatch.setattr(ss_mod.os, "replace", boom)
+
+        StorageService._instance = None
+        svc = StorageService()
+
+        assert svc.get("anything") is None
+        # 原坏文件保留(重命名失败)
+        assert (storage_dir / "preferences.json").exists()
+
+    def test_save_tmp_cleanup_failure_is_silent(self, isolated_storage, monkeypatch):
+        """写入失败且临时文件清理也失败时不向外抛错"""
+        _, svc = isolated_storage
+
+        def boom(*a, **k):
+            raise OSError("disk full")
+        monkeypatch.setattr(ss_mod.os, "replace", boom)
+        monkeypatch.setattr(pathlib.Path, "unlink", lambda self, missing_ok=False: (_ for _ in ()).throw(OSError("nope")))
+
+        svc.set("key", "value")  # 不应抛出
