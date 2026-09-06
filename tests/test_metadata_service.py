@@ -55,6 +55,22 @@ class TestMetadataCache:
         assert svc.save_metadata(vpk_path, None) is True
         assert svc.load_metadata(vpk_path) == {}
 
+    def test_save_is_atomic_no_tmp_left_and_overwrites(self, tmp_path):
+        svc = _make_service(tmp_path)
+        vpk_path = str(tmp_path / "mymod.vpk")
+        assert svc.save_metadata(vpk_path, {"addontitle": "v1"}) is True
+        assert svc.save_metadata(vpk_path, {"addontitle": "v2"}) is True
+
+        json_path = tmp_path / "vpk_config" / "mymod.json"
+        assert not (tmp_path / "vpk_config" / "mymod.json.tmp").exists()
+        assert svc.load_metadata(vpk_path) == {"addontitle": "v2"}
+
+    def test_corrupt_cache_returns_none(self, tmp_path):
+        svc = _make_service(tmp_path)
+        (tmp_path / "vpk_config").mkdir(exist_ok=True)
+        (tmp_path / "vpk_config" / "broken.json").write_text("{corrupt", encoding="utf-8")
+        assert svc.load_metadata(str(tmp_path / "broken.vpk")) is None
+
     def test_extract_addontitle_on_missing_file_returns_none(self, tmp_path):
         svc = _make_service(tmp_path)
         assert svc.extract_addontitle(str(tmp_path / "ghost.vpk")) is None

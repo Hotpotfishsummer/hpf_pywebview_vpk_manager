@@ -1,6 +1,7 @@
 """VPK 元数据提取和缓存服务"""
 
 import json
+import os
 from pathlib import Path
 from typing import Optional, Dict, Any
 import vpk
@@ -44,11 +45,13 @@ class VpkMetadataService:
         return None
 
     def save_metadata(self, vpk_file_path: str, metadata: Optional[Dict[str, Any]]) -> bool:
-        """将元数据保存到 JSON 文件"""
+        """将元数据保存到 JSON 文件（先写临时文件再原子替换，避免中断损坏缓存）"""
         json_path = self.get_json_path(vpk_file_path)
+        tmp_path = json_path.with_suffix('.json.tmp')
         try:
-            with open(json_path, 'w', encoding='utf-8') as f:
+            with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(metadata or {}, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, json_path)
             _safe_print(f"save_metadata: 已保存元数据到 {json_path}")
             return True
         except Exception as e:
