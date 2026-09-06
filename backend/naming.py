@@ -13,6 +13,8 @@ from typing import List, Optional, Tuple
 _ILLEGAL_CHARS_PATTERN = r'[<>:"/\\|?*\x00-\x1f]'
 # 文件名中 8 位以上的连续数字视为 Steam 创意工坊 ID
 _WORKSHOP_ID_PATTERN = r'(\d{8,})'
+# 清洗后基名上限:Windows 默认路径上限 260,留出目录层级与扩展名余量
+_MAX_BASE_NAME_LEN = 120
 # VPK 关联的图片文件扩展名
 IMAGE_EXTS = ('.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif')
 
@@ -52,7 +54,7 @@ def build_export_base_name(addontitle: Optional[str], filename: str, fallback_st
     if not addontitle:
         return fallback_stem
 
-    base_name = sanitize_addon_title(addontitle)
+    base_name = sanitize_addon_title(addontitle)[:_MAX_BASE_NAME_LEN]
     if not base_name.strip('_'):
         base_name = fallback_stem
 

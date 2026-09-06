@@ -126,3 +126,47 @@ class TestFindAssociatedImages:
 
     def test_missing_directory_returns_empty(self, tmp_path):
         assert find_associated_images(str(tmp_path / "nope"), "mod.vpk") == []
+
+
+class TestBuildExportBaseNameEdgeCases:
+    def test_empty_string_title_falls_back(self):
+        assert build_export_base_name("", "mod.vpk", "fallback") == "fallback"
+
+    def test_whitespace_only_title_falls_back(self):
+        assert build_export_base_name("   ", "mod.vpk", "fallback") == "fallback"
+
+    def test_underscore_only_title_falls_back(self):
+        assert build_export_base_name("___", "mod.vpk", "fallback") == "fallback"
+
+    def test_overlong_title_truncated_to_limit(self):
+        # 超长标题截断到 120 字符,避免突破 Windows 路径上限
+        title = "很长的标题" * 50
+        name = build_export_base_name(title, "mod.vpk", "fallback")
+        assert len(name) == 120
+
+    def test_truncated_title_still_appends_workshop_id(self):
+        title = "a" * 200
+        name = build_export_base_name(title, "123456789.vpk", "fallback")
+        assert name.endswith("-123456789")
+        assert len(name) == 120 + len("-123456789")
+
+    def test_quotes_and_brackets_sanitized(self):
+        assert build_export_base_name('a"b:c<d>', "mod.vpk", "fb") == "a_b_c_d_"
+
+
+class TestExtractWorkshopIdEdgeCases:
+    def test_exactly_eight_digits(self):
+        assert extract_workshop_id("x12345678.vpk") == "12345678"
+
+    def test_long_digit_run_taken_whole(self):
+        # 贪婪匹配:整个连续数字段视为 ID
+        assert extract_workshop_id("x12345678901.vpk") == "12345678901"
+
+
+class TestVpkStemForAssociationEdgeCases:
+    def test_plain_disabled_file_without_vpk(self):
+        assert vpk_stem_for_association("readme.disabled") == "readme"
+
+    def test_disabled_suffix_must_be_tail(self):
+        # 'disabled' 出现在中间不算禁用后缀
+        assert vpk_stem_for_association("mod.disabled.vpk") == "mod.disabled"
