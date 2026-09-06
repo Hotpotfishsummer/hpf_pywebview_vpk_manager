@@ -194,14 +194,15 @@ const deleteResult = await getApi().delete_vpk_file(
 
 ## 测试
 
-后端单元测试基于 pytest（运行前先激活 conda 环境并安装 `pip install pytest`）：
+后端单元测试基于 pytest（依赖已在 requirements.txt / environment.yml 中，含 pytest-cov）：
 
 ```bash
 conda activate hpf-vpk-manager-pywebview
-python -m pytest
+python -m pytest -q                      # 全量运行（190 用例）
+python -m pytest -q --cov=backend        # 带覆盖率
 ```
 
-测试覆盖：VPK 命名清洗逻辑（`backend/naming.py`）、元数据提取与缓存失效、导入/导出全链路、SFTP 服务（mock）、配置与偏好存储、真实 VPK 构造的标题编码链路、i18n 语言键一致性守卫。全部使用临时目录或 mock，不触碰真实用户数据。
+测试覆盖：VPK 命名清洗与边界（`backend/naming.py`）、元数据提取与缓存失效、导入/导出全链路（含 7z 路径穿越防护）、SFTP 服务（mock）、上传/下载/本地化/扫描服务、依赖清单一致性守卫、未使用 i18n 键守卫、en/zh 占位符一致性、真实 VPK 构造的标题编码链路。全部使用临时目录或 mock，不触碰真实用户数据。
 
 前端类型检查：
 

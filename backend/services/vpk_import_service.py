@@ -4,6 +4,8 @@ import os
 import shutil
 import zipfile
 import tarfile
+
+from ..naming import IMAGE_EXTS
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -142,5 +144,4 @@ class VpkImportService:
         lower_name = name.lower()
         if lower_name.endswith('.vpk'):
             return True
-        image_exts = ['.jpg', '.jpeg', '.png', '.tga', '.bmp', '.gif']
-        return any(lower_name.endswith(ext) for ext in image_exts)
+        return any(lower_name.endswith(ext) for ext in IMAGE_EXTS)

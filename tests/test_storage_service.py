@@ -119,3 +119,11 @@ class TestStaleTmpCleanup:
         StorageService()
 
         assert not stale.exists()
+
+
+class TestNestedValues:
+    def test_nested_dict_and_list_roundtrip(self, isolated_storage):
+        _, svc = isolated_storage
+        value = {"deep": {"list": [1, 2, 3]}, "flag": True}
+        svc.set("complex", value)
+        assert svc.get("complex") == value

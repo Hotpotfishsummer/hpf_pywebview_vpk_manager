@@ -99,7 +99,9 @@ class SftpService:
             logger.error(f"重命名远程文件失败 {old_path} -> {new_path}: {e}")
             return False
 
-    # VPK 关联的图片/文本文件扩展名(与本地批量禁用/删除逻辑一致)
+    # 远端启用/禁用/删除时同步处理的关联文件扩展名。
+    # 与 naming.IMAGE_EXTS(本地缩略图扫描,含 tga/bmp/gif)语义不同:
+    # 此处对齐"本地批量禁用/删除"的行为(图片 + txt 描述文件),不随意扩集。
     ASSOCIATED_EXTS = ('.jpg', '.png', '.jpeg', '.txt')
 
     def rename_file_with_images(self, config: Dict[str, str], old_path: str, new_path: str) -> bool:
