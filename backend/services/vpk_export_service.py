@@ -126,7 +126,7 @@ class VpkExportService:
 
         except Exception as e:
             error_msg = f'Error exporting VPK files: {str(e)}'
-            logger.info(f"export_vpks: {error_msg}")
+            logger.error(f"export_vpks: {error_msg}")
             raise
 
     @staticmethod
