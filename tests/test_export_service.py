@@ -60,3 +60,9 @@ class TestMissingDependency:
 
         with pytest.raises(Exception, match="zstandard"):
             VpkExportService.export_vpks(["/a.vpk"], str(tmp_path))
+
+
+class TestEmptyInputGuard:
+    def test_empty_file_list_raises(self, tmp_path):
+        with pytest.raises(Exception, match="No files selected"):
+            VpkExportService.export_vpks([], str(tmp_path))
