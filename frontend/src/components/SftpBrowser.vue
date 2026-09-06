@@ -58,12 +58,17 @@
       </div>
 
       <div v-else class="remote-list">
-        <div 
-          v-for="file in store.remoteVpkFiles" 
-          :key="file.path" 
+        <div
+          v-for="file in store.remoteVpkFiles"
+          :key="file.path"
           class="remote-item"
           :class="{ 'is-disabled': file.is_disabled, 'is-selected': store.selectedRemoteVpks.has(file.path) }"
+          role="button"
+          tabindex="0"
+          :aria-pressed="store.selectedRemoteVpks.has(file.path)"
           @click="store.toggleRemoteVpkSelection(file.path)"
+          @keydown.enter.prevent="store.toggleRemoteVpkSelection(file.path)"
+          @keydown.space.prevent="store.toggleRemoteVpkSelection(file.path)"
         >
           <div class="item-checkbox">
             <label class="checkbox-container" @click.stop>
@@ -322,6 +327,11 @@ onMounted(() => {
   background: rgba(30, 41, 59, 0.5);
   border-color: rgba(59, 130, 246, 0.3);
   transform: translateX(4px);
+}
+
+.remote-item:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
 }
 
 .remote-item.is-selected {
