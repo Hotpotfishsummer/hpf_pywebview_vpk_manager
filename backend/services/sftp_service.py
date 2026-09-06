@@ -30,8 +30,12 @@ class SftpService:
 
         # 解析地址和端口
         if ':' in address:
-            host, port = address.split(':')
+            host, port = address.rsplit(':', 1)
+            if not port.isdigit():
+                raise ValueError(f"无效的 SFTP 端口: '{port}'(地址格式应为 host:port)")
             port = int(port)
+            if not 1 <= port <= 65535:
+                raise ValueError(f"SFTP 端口超出范围: {port}")
         else:
             host, port = address, 22
 

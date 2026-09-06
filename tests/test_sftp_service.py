@@ -189,3 +189,15 @@ class TestTransferErrorPaths:
 
     def test_close_without_connection_is_safe(self):
         SftpService().close()
+
+
+class TestAddressParsing:
+    def test_empty_port_raises_clear_error(self):
+        svc = SftpService()
+        with pytest.raises(ValueError, match="无效的 SFTP 端口"):
+            svc._get_client({"address": "host:", "username": "u", "password": "p"})
+
+    def test_out_of_range_port_raises(self):
+        svc = SftpService()
+        with pytest.raises(ValueError, match="端口超出范围"):
+            svc._get_client({"address": "host:99999", "username": "u", "password": "p"})
