@@ -39,6 +39,14 @@ class StorageService:
         # 存储文件路径
         self._storage_file = self._storage_dir / 'preferences.json'
 
+        # 清理上次写入中断遗留的临时文件
+        stale_tmp = self._storage_file.with_suffix('.json.tmp')
+        if stale_tmp.exists():
+            try:
+                stale_tmp.unlink()
+            except OSError:
+                pass
+
         # 加载现有偏好设置
         self._preferences = self._load_preferences()
 
@@ -72,6 +80,10 @@ class StorageService:
             os.replace(tmp_file, self._storage_file)
         except IOError as e:
             logger.error(f"保存偏好设置出错: {e}")
+            try:
+                tmp_file.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def set(self, key: str, value: Any):
         """设置偏好值"""

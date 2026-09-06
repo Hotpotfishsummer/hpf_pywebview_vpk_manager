@@ -105,3 +105,17 @@ class TestAtomicWrite:
         assert svc.get("anything") is None
         assert (storage_dir / "preferences.json.corrupt").exists()
         assert (storage_dir / "preferences.json.corrupt").read_text(encoding="utf-8") == "{not valid json"
+
+
+class TestStaleTmpCleanup:
+    def test_stale_tmp_file_cleaned_on_init(self, isolated_storage):
+        home, svc = isolated_storage
+        storage_dir = home / "Documents" / "L4D2-VPK-Manager"
+        stale = storage_dir / "preferences.json.tmp"
+        stale.write_text("{}", encoding="utf-8")
+
+        # 重置单例触发重新初始化
+        StorageService._instance = None
+        StorageService()
+
+        assert not stale.exists()

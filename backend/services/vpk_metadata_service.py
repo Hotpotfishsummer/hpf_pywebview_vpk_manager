@@ -21,6 +21,12 @@ class VpkMetadataService:
             config_dir = str(Path.home() / 'Documents' / 'L4D2-VPK-Manager' / '.vpk_config')
         self.config_dir = Path(config_dir)
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        # 清理上次写入中断遗留的临时文件
+        for stale in self.config_dir.glob("*.json.tmp"):
+            try:
+                stale.unlink()
+            except OSError:
+                pass
 
     def get_json_path(self, vpk_file_path: str) -> Path:
         """获取 VPK 文件的 JSON 文件路径"""
@@ -50,6 +56,10 @@ class VpkMetadataService:
             return True
         except Exception as e:
             logger.info(f"save_metadata: 保存 JSON {json_path} 失败: {e}")
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
             return False
 
     def extract_addontitle(self, vpk_file_path: str) -> Optional[str]:

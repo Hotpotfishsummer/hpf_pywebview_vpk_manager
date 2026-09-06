@@ -191,3 +191,14 @@ class TestCacheInvalidation:
         vpk_path = self._make_vpk(tmp_path)
         monkeypatch.setattr(svc, "extract_addontitle", lambda p: "T")
         assert svc.get_addontitle(vpk_path) == "T"
+
+
+class TestStaleTmpCleanup:
+    def test_stale_tmp_files_cleaned_on_init(self, tmp_path):
+        cfg = tmp_path / "vpk_config"
+        cfg.mkdir()
+        (cfg / "mod.json.tmp").write_text("{}", encoding="utf-8")
+
+        VpkMetadataService(config_dir=str(cfg))
+
+        assert list(cfg.glob("*.json.tmp")) == []
