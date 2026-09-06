@@ -87,3 +87,20 @@ class TestScan:
         assert entry["size"] == out.stat().st_size
         assert entry["modified_time"] == out.stat().st_mtime
         assert entry["is_valid"] is True
+
+
+class TestScanEdgeCases:
+    def test_skips_directory_named_like_vpk(self, tmp_path):
+        """名字像 VPK 的目录不应进入扫描结果,也不应抛错"""
+        l4d2 = tmp_path / "l4d2"
+        addons = l4d2 / "left4dead2" / "addons"
+        workshop = addons / "workshop"
+        workshop.mkdir(parents=True)
+        (addons / "folder.vpk").mkdir()          # 目录,不是文件
+        (addons / "real.vpk").write_bytes(b"x")  # 哑文件即可走通元数据路径
+
+        svc = VpkScanService(VpkMetadataService(config_dir=str(tmp_path / "cfg")))
+        result = svc.scan(str(l4d2))
+
+        names = [f["name"] for f in result["local_vpks"]]
+        assert names == ["real.vpk"]

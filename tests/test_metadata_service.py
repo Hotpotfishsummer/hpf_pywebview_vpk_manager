@@ -1,5 +1,7 @@
 """vpk_metadata_service 的单元测试(使用 tmp_path,不触碰真实用户数据)"""
 
+import os
+
 from backend.services.vpk_metadata_service import VpkMetadataService
 
 
@@ -202,3 +204,21 @@ class TestStaleTmpCleanup:
         VpkMetadataService(config_dir=str(cfg))
 
         assert list(cfg.glob("*.json.tmp")) == []
+
+
+class TestCacheInvalidationBySize:
+    def test_same_mtime_different_size_invalidates(self, tmp_path):
+        """mtime 相同而 size 变化(罕见但可能)也必须失效重提取"""
+        svc = _make_service(tmp_path)
+        vpk_path = tmp_path / "mod.vpk"
+        vpk_path.write_bytes(b"v1")
+        svc.get_or_extract_metadata(str(vpk_path))  # 建立缓存
+
+        # 强制 size 变化但保持 mtime 不变
+        st = vpk_path.stat()
+        vpk_path.write_bytes(b"v1 with different length")
+        os.utime(vpk_path, (st.st_atime, st.st_mtime))
+
+        fresh = svc.get_or_extract_metadata(str(vpk_path))
+        # 重新提取后缓存里的 stat 与文件一致
+        assert fresh["source_size"] == vpk_path.stat().st_size

@@ -35,6 +35,9 @@ class VpkScanService:
             if not (filename_lower.endswith(".vpk") or filename_lower.endswith(".vpk.disabled")):
                 continue
             vpk_path = os.path.join(scan_dir, filename)
+            if not os.path.isfile(vpk_path):
+                # 名字像 VPK 的目录(如 "xxx.vpk" 文件夹)跳过
+                continue
             try:
                 vpk_file = self.metadata_service.get_vpk_metadata(vpk_path)
                 if vpk_file:
