@@ -144,3 +144,42 @@ class TestDuplicateBasenameOverwrite:
         assert result["success"] is True
         # 只有一个 mod.vpk,内容为后写的 B
         assert (addons / "mod.vpk").read_bytes() == b"content B"
+
+
+class Test7zNestedFlatten:
+    def test_nested_7z_entry_flattened_and_dirs_removed(self, tmp_path):
+        """嵌套路径的 7z 条目解压后扁平化到目标根,空目录被清理"""
+        archive = tmp_path / "nested.7z"
+        payload = tmp_path / "payload.vpk"
+        payload.write_bytes(b"vpk")
+        with py7zr.SevenZipFile(archive, "w") as z:
+            z.write(payload, arcname="deep/dir/nested.vpk")
+
+        addons = tmp_path / "addons"
+        addons.mkdir()
+
+        result = VpkImportService.import_compressed_files([str(archive)], str(addons))
+
+        assert result["success"] is True
+        assert (addons / "nested.vpk").read_bytes() == b"vpk"
+        # 中间目录已清理
+        assert not (addons / "deep").exists()
+
+    def test_7z_without_py7zr_reports_error(self, tmp_path, monkeypatch):
+        """环境缺 py7zr 时 .7z 导入应报错而非崩溃"""
+        import backend.services.vpk_import_service as mod
+        archive = tmp_path / "pack.7z"
+        payload = tmp_path / "payload.vpk"
+        payload.write_bytes(b"vpk")
+        with py7zr.SevenZipFile(archive, "w") as z:
+            z.write(payload, arcname="pack.vpk")
+
+        addons = tmp_path / "addons"
+        addons.mkdir()
+        monkeypatch.setattr(mod, "HAS_PY7ZR", False)
+
+        result = VpkImportService.import_compressed_files([str(archive)], str(addons))
+
+        assert result["success"] is False
+        assert result["imported_count"] == 0
+        assert any("py7zr" in e for e in result["errors"])
