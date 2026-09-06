@@ -18,3 +18,4 @@ dependencies:
     - Nuitka>=1.8.0
     - PyInstaller>=6.0.0
     - pytest>=8.0.0
+    - pytest-cov>=5.0.0
