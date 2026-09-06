@@ -158,3 +158,34 @@ class TestCloseLifecycle:
         svc = SftpService()
         svc.close()
         svc.close()  # 二次调用不应抛错
+
+
+class TestTransferErrorPaths:
+    def test_download_failure_returns_false(self, monkeypatch):
+        svc, sftp = _make_service_with_mock_sftp(monkeypatch)
+        sftp.get.side_effect = IOError("net down")
+        assert svc.download_file({}, "/r/a.vpk", "/l/a.vpk") is False
+
+    def test_download_creates_local_dirs(self, tmp_path, monkeypatch):
+        svc, sftp = _make_service_with_mock_sftp(monkeypatch)
+        local = tmp_path / "deep" / "dir" / "a.vpk"
+        ok = svc.download_file({}, "/r/a.vpk", str(local))
+        assert ok is True
+        assert local.parent.exists()
+
+    def test_upload_failure_returns_false(self, monkeypatch):
+        svc, sftp = _make_service_with_mock_sftp(monkeypatch)
+        sftp.put.side_effect = IOError("quota")
+        assert svc.upload_file({}, "/l/a.vpk", "/r/a.vpk") is False
+
+    def test_file_exists_variants(self, monkeypatch):
+        svc, sftp = _make_service_with_mock_sftp(monkeypatch)
+        sftp.stat.return_value = MagicMock()
+        assert svc.file_exists({}, "/r/a.vpk") is True
+        sftp.stat.side_effect = FileNotFoundError()
+        assert svc.file_exists({}, "/r/a.vpk") is False
+        sftp.stat.side_effect = IOError("perm")
+        assert svc.file_exists({}, "/r/a.vpk") is False
+
+    def test_close_without_connection_is_safe(self):
+        SftpService().close()
