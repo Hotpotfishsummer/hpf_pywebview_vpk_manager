@@ -10,6 +10,8 @@ import shutil
 from pathlib import Path
 from typing import List
 
+import webview
+
 logger = logging.getLogger(__name__)
 
 
