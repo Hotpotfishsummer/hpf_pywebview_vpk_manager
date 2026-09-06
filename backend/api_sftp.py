@@ -8,6 +8,8 @@ import logging
 import os
 from typing import List
 
+from .services.storage_service import DEFAULT_SFTP_SETTINGS
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,12 +22,7 @@ class SftpApiMixin:
             return self.storage_service.get_sftp_settings()
         except Exception as e:
             logger.error(f"获取 SFTP 设置出错: {e}")
-            return {
-                'address': '',
-                'username': '',
-                'password': '',
-                'addons_path': ''
-            }
+            return dict(DEFAULT_SFTP_SETTINGS)
 
     def save_sftp_settings(self, settings: dict) -> dict:
         """保存 SFTP 设置。"""

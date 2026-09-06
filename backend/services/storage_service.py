@@ -8,6 +8,14 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# SFTP 设置的默认值(storage 层与 api 层错误兜底共用)
+DEFAULT_SFTP_SETTINGS = {
+    'address': '',
+    'username': '',
+    'password': '',
+    'addons_path': ''
+}
+
 
 class StorageService:
     """持久化用户偏好设置到本地存储的单例服务"""
@@ -98,12 +106,7 @@ class StorageService:
 
     def get_sftp_settings(self) -> dict:
         """获取 SFTP 设置"""
-        return self.get('sftp_settings', {
-            'address': '',
-            'username': '',
-            'password': '',
-            'addons_path': ''
-        })
+        return self.get('sftp_settings', dict(DEFAULT_SFTP_SETTINGS))
 
     def save_sftp_settings(self, settings: dict):
         """保存 SFTP 设置"""

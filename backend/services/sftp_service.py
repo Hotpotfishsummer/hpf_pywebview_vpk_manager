@@ -59,30 +59,25 @@ class SftpService:
         if not remote_path:
             raise ValueError("未配置远程 addons 路径")
 
+        sftp = self._get_client(config)
+        files = []
         try:
-            sftp = self._get_client(config)
-            files = []
-            
-            try:
-                # 尝试列出目录内容
-                for attr in sftp.listdir_attr(remote_path):
-                    filename_lower = attr.filename.lower()
-                    if filename_lower.endswith('.vpk') or filename_lower.endswith('.vpk.disabled'):
-                        files.append({
-                            'name': attr.filename,
-                            'path': os.path.join(remote_path, attr.filename).replace('\\', '/'),
-                            'size': round(attr.st_size / (1024 * 1024), 2),  # MB
-                            'modified_time': attr.st_mtime,
-                            'is_disabled': filename_lower.endswith('.disabled')
-                        })
-            except IOError as e:
-                logger.error(f"无法访问远程路径 {remote_path}: {e}")
-                return []
-                
-            return sorted(files, key=lambda x: x['name'].lower())
-        except Exception as e:
-            logger.error(f"获取远程文件列表失败: {e}")
-            raise
+            for attr in sftp.listdir_attr(remote_path):
+                filename_lower = attr.filename.lower()
+                if filename_lower.endswith('.vpk') or filename_lower.endswith('.vpk.disabled'):
+                    files.append({
+                        'name': attr.filename,
+                        'path': os.path.join(remote_path, attr.filename).replace('\\', '/'),
+                        'size': round(attr.st_size / (1024 * 1024), 2),  # MB
+                        'modified_time': attr.st_mtime,
+                        'is_disabled': filename_lower.endswith('.disabled')
+                    })
+        except IOError as e:
+            # 目录不可读时视为空列表(调用方展示"无文件")
+            logger.error(f"无法访问远程路径 {remote_path}: {e}")
+            return []
+
+        return sorted(files, key=lambda x: x['name'].lower())
 
     def delete_file(self, config: Dict[str, str], file_path: str) -> bool:
         """删除远程文件"""
