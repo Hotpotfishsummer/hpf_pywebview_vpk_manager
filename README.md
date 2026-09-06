@@ -28,7 +28,7 @@
 
 - **操作系统：** Windows 10/11
 - **Python：** 3.12
-- **Node.js：** 20+
+- **Node.js：** 20+（environment.yml 固定安装 Node 20；本机装有更高版本时前端工具链同样可用）
 - **Conda：** Anaconda 或 Miniconda
 
 ### 1. 安装环境
