@@ -242,22 +242,23 @@ cd frontend && npm run test
 
 ### 添加新的 API 方法
 
-1. 在 `backend/api.py` 的 `VpkManagerApi` 类中添加方法
-2. 方法会自动通过 `window.api` 暴露给前端
+1. 在对应 Mixin（`backend/api_sftp.py` / `api_app.py` / `api_ops.py`）或 `backend/api.py` 中添加方法：
 
 ```python
-class VpkManagerApi:
-    def my_new_method(self, param: str) -> dict:
-        return {
-            "success": True,
-            "data": result
-        }
+def my_new_method(self, param: str) -> dict:
+    return {
+        "success": True,
+        "data": result
+    }
 ```
 
-3. 在前端调用：
+2. **必须**把方法名登记到 `backend/api.py` 的 `_PUBLIC_METHODS`（白名单决定前端可见性；
+   漏登记会被 `tests/test_vpk_ops.py` 的双向一致性守卫测试拦截）
+3. 在 `frontend/src/composables/useApi.ts` 的 `PyWebViewApi` 接口中补充签名（类型守卫）
+4. 在前端调用：
 
 ```typescript
-const result = await window.api.my_new_method('value')
+const result = await getApi().my_new_method('value')
 ```
 
 ### 添加新的 Vue 组件
