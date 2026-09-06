@@ -104,5 +104,7 @@
   "noVpkFilesHeading": "未找到 VPK 文件",
   "selectDirWithVpks": "请选择包含 VPK 文件的目录",
   "viewInWorkshop": "在 Steam 创意工坊中查看",
-  "openWorkshopPage": "打开创意工坊页面"
+  "openWorkshopPage": "打开创意工坊页面",
+  "resetting": "正在清理…",
+  "executeNow": "执行"
 }

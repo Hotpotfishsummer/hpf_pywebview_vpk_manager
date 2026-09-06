@@ -15,12 +15,12 @@
                 <span class="setting-title">{{ $t('resetAppData') }}</span>
                 <p class="setting-item-desc">{{ $t('resetAppDataDesc') }}</p>
               </div>
-              <button 
-                class="btn btn-outline" 
+              <button
+                class="btn btn-outline"
                 @click="handleResetData"
                 :disabled="isResetting"
               >
-                {{ isResetting ? 'Cleaning...' : 'Execute' }}
+                {{ isResetting ? $t('resetting') : $t('executeNow') }}
               </button>
             </div>
           </div>
@@ -85,6 +85,7 @@
 import { ref } from 'vue'
 import { useVpkManagerStore } from '@/stores/vpk-manager'
 import { useI18n } from 'vue-i18n'
+import { getApi } from '@/composables/useApi'
 
 defineProps<{
   show: boolean
@@ -102,9 +103,10 @@ async function handleResetData() {
   if (confirm($t('resetConfirm'))) {
     try {
       isResetting.value = true
-      await (window as any).pywebview.api.reset_app_data()
+      await getApi().reset_app_data()
     } catch (error) {
       console.error('Reset failed:', error)
+    } finally {
       isResetting.value = false
     }
   }

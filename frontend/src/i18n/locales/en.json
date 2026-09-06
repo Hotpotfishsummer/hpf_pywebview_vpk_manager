@@ -104,5 +104,7 @@
   "noVpkFilesHeading": "No VPK Files Found",
   "selectDirWithVpks": "Select a directory containing VPK files",
   "viewInWorkshop": "View in Steam Workshop",
-  "openWorkshopPage": "Open Workshop page"
+  "openWorkshopPage": "Open Workshop page",
+  "resetting": "Cleaning...",
+  "executeNow": "Execute"
 }
