@@ -48,13 +48,20 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # 检查前端构建资源是否存在
-if (-not (Test-Path $distDir)) {
-    Write-Host "未找到前端构建目录。正在先构建前端..." -ForegroundColor Yellow
+if (-not (Test-Path (Join-Path $distDir "index.html"))) {
+    Write-Host "未找到前端构建产物(frontend/dist/index.html)。正在先构建前端..." -ForegroundColor Yellow
     & (Join-Path $scriptPath "build-frontend.ps1")
     if ($LASTEXITCODE -ne 0) {
         Write-Host "前端构建失败!" -ForegroundColor Red
         exit 1
     }
+}
+
+# 检查打包引用的图标资源是否存在
+$iconPath = Join-Path $projectRoot "assets/app_icon.ico"
+if (-not (Test-Path $iconPath)) {
+    Write-Host "错误: 未找到图标文件 $iconPath (Nuitka --windows-icon-from-ico 引用)。" -ForegroundColor Red
+    exit 1
 }
 
 # 创建输出目录
@@ -103,6 +110,10 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "可执行文件已创建: $exePath" -ForegroundColor Green
         $fileSize = (Get-Item $exePath).Length / 1MB
         Write-Host "文件大小: $([Math]::Round($fileSize, 2)) MB" -ForegroundColor Green
+    } else {
+        Write-Host "错误: 编译报告成功但未找到产物 $exePath !" -ForegroundColor Red
+        Pop-Location
+        exit 1
     }
 } else {
     Write-Host "Nuitka 编译失败!" -ForegroundColor Red

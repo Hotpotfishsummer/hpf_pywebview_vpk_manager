@@ -296,6 +296,24 @@ python -m watchdog.auto_reload main.py
 - 使用 `--follow-imports` 仅包含使用的模块
 - 启用数据压缩选项
 
+## 故障排查
+
+### 应用启动失败 / 白屏
+
+**A:** 查看日志文件 `Documents/L4D2-VPK-Manager/vpk_manager.log`（启动参数、前端资源定位、WebView 创建过程均有记录）。打包后若日志出现"找不到前端资源"，说明 `frontend/dist` 未随包携带，重新执行打包脚本即可。
+
+### 偏好设置丢失或怀疑损坏
+
+**A:** 偏好保存在 `Documents/L4D2-VPK-Manager/preferences.json`。文件损坏时应用启动会自动将其重命名为 `preferences.json.corrupt` 并以默认设置继续，原文件内容可在该副本中找回。
+
+### SFTP 连接失败
+
+**A:** 检查地址格式为 `host:port`（省略端口时默认 22）。连接默认 10 秒超时；网络较慢时可在代码中通过 `SftpService(connect_timeout=...)` 调大。所有连接错误都会写入日志。
+
+### 开发模式（前端热更新）
+
+**A:** 设置环境变量 `PYWEBVIEW_DEV=true` 后启动 Python 应用，将加载 Vite 开发服务器 `http://localhost:5173`（需先 `npm run dev`）。
+
 ## 配置文件
 
 ### `environment.yml`
