@@ -222,3 +222,28 @@ class TestCacheInvalidationBySize:
         fresh = svc.get_or_extract_metadata(str(vpk_path))
         # 重新提取后缓存里的 stat 与文件一致
         assert fresh["source_size"] == vpk_path.stat().st_size
+
+
+class TestErrorPaths:
+    def test_save_metadata_failure_returns_false_and_cleans_tmp(self, tmp_path):
+        svc = _make_service(tmp_path)
+        # 把 config 目录变成文件,使写入必然失败
+        cfg_file = tmp_path / "not_a_dir"
+        cfg_file.write_text("", encoding="utf-8")
+        broken = VpkMetadataService.__new__(VpkMetadataService)
+        broken.config_dir = cfg_file
+
+        assert broken.save_metadata(str(tmp_path / "m.vpk"), {"a": 1}) is False
+        assert list(tmp_path.glob("*.tmp")) == []
+
+    def test_unreadable_thumbnail_is_skipped(self, tmp_path):
+        # 缩略图位置放一个目录,读取必然失败但不影响元数据返回
+        vpk_file = tmp_path / "mod.vpk"
+        vpk_file.write_bytes(b"x")
+        (tmp_path / "mod.jpg").mkdir()
+
+        svc = _make_service(tmp_path)
+        meta = svc.get_vpk_metadata(str(vpk_file))
+
+        assert meta is not None
+        assert meta.thumbnail_path is None

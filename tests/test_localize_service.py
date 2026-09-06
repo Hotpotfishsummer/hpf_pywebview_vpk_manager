@@ -159,3 +159,32 @@ class TestBetterNamingEdgeCases:
 
         assert result["success"] is True
         assert (addons / "87654321.vpk").exists()
+
+
+class TestLocalizeErrorPaths:
+    def test_unlocalizable_file_reported_in_errors(self, tmp_path):
+        l4d2, addons, workshop = _make_l4d2(tmp_path)
+        svc = _make_service(tmp_path)
+        # 目录伪装成 .vpk,复制阶段必然失败
+        bad = workshop / "99999999.vpk"
+        bad.mkdir()
+
+        result = svc.localize([str(bad)], str(l4d2), better_naming=False)
+
+        assert result["success"] is False
+        assert result["success_count"] == 0
+        assert len(result["errors"]) == 1
+
+    def test_existing_trash_entry_replaced(self, tmp_path):
+        l4d2, addons, workshop = _make_l4d2(tmp_path)
+        svc = _make_service(tmp_path)
+        vpk_path = _make_vpk(workshop, name="12345678.vpk", title="My Mod")
+
+        trash = workshop / ".trash"
+        trash.mkdir()
+        (trash / "12345678.vpk").write_bytes(b"stale old entry")
+
+        result = svc.localize([vpk_path], str(l4d2), better_naming=False)
+
+        assert result["success"] is True
+        assert (trash / "12345678.vpk").read_bytes() != b"stale old entry"
