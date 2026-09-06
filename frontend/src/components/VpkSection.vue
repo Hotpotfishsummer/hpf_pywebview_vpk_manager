@@ -1,0 +1,246 @@
+<template>
+  <section class="vpk-section">
+    <div class="section-header" @click="toggleExpanded">
+      <h2 class="section-title">
+        {{ title }} ({{ files.length }})
+      </h2>
+      <span class="section-toggle" :class="{ rotated: expanded }">▶</span>
+    </div>
+    <p class="section-subtitle">{{ subtitle }}</p>
+
+    <transition name="expand">
+      <div v-if="expanded" class="section-content-wrapper">
+        <div class="section-content">
+          <div v-if="files.length === 0" class="empty-message">
+            {{ emptyText }}
+          </div>
+          <div v-else class="file-list">
+            <div class="list-actions">
+              <label class="checkbox-label">
+                <input
+                  type="checkbox"
+                  :checked="allSelected"
+                  @change="toggleAll"
+                />
+                <span>{{ allSelected ? $t('deselectAll') : $t('selectAll') }}</span>
+              </label>
+              <button
+                class="action-icon-btn"
+                @click.stop="$emit('open-folder')"
+                :title="$t('openInFileManager')"
+              >
+                <span class="icon">📂</span>
+              </button>
+            </div>
+            <VpkFileItem
+              v-for="vpk in files"
+              :key="vpk.path"
+              :vpk="vpk"
+              :is-selected="selectedSet.has(vpk.path)"
+              @toggle="$emit('toggle-select', vpk.path)"
+            />
+          </div>
+        </div>
+      </div>
+    </transition>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import type { VpkFile } from '@/stores/vpk-manager'
+import VpkFileItem from '@/components/VpkFileItem.vue'
+
+const props = defineProps<{
+  title: string
+  subtitle: string
+  emptyText: string
+  files: VpkFile[]
+  selectedSet: Set<string>
+}>()
+
+const emit = defineEmits<{
+  (e: 'toggle-select', path: string): void
+  (e: 'select-all'): void
+  (e: 'deselect-all'): void
+  (e: 'open-folder'): void
+}>()
+
+const expanded = ref(true)
+
+const allSelected = computed(() => {
+  return props.files.length > 0 && props.files.every((vpk) => props.selectedSet.has(vpk.path))
+})
+
+function toggleExpanded() {
+  expanded.value = !expanded.value
+}
+
+function toggleAll() {
+  if (allSelected.value) {
+    emit('deselect-all')
+  } else {
+    emit('select-all')
+  }
+}
+</script>
+
+<style scoped>
+.vpk-section {
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(20px);
+}
+
+.vpk-section:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  background: rgba(15, 23, 42, 0.6);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  transition: background-color 0.2s ease;
+}
+
+.section-header:hover {
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.section-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: -0.3px;
+}
+
+.section-toggle {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 600;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-toggle.rotated {
+  transform: rotate(90deg);
+}
+
+.section-header:hover .section-toggle {
+  color: #cbd5e1;
+}
+
+.section-subtitle {
+  margin: 0;
+  padding: 0 20px;
+  padding-top: 10px;
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* Expansion Animation */
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 2000px; /* Large enough to fit content */
+  opacity: 1;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  transform: translateY(-10px);
+}
+
+.section-content-wrapper {
+  overflow: hidden;
+}
+
+.section-content {
+  padding: 16px 20px;
+}
+
+.empty-message {
+  padding: 28px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: 500;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  margin-bottom: 14px;
+}
+
+.action-icon-btn {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-icon-btn:hover {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(148, 163, 184, 0.4);
+  transform: translateY(-1px);
+}
+
+.action-icon-btn .icon {
+  font-size: 16px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #e2e8f0;
+  font-weight: 600;
+  padding: 8px 0;
+  transition: color 0.2s ease;
+}
+
+.checkbox-label input[type='checkbox'] {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
+}
+
+.checkbox-label:hover {
+  color: #3b82f6;
+}
+</style>
