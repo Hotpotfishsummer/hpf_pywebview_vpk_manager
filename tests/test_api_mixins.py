@@ -245,3 +245,91 @@ class TestOpsApiMixin:
         assert result["success"] is True
         assert result["imported_count"] == 0
         assert "取消" in result["message"]
+
+
+class TestAppApiMixinDeep:
+    def test_open_directory_uses_startfile_on_windows(self, monkeypatch):
+        host = AppHost()
+        import backend.api_app as mod
+        real_exists = mod.os.path.exists
+        monkeypatch.setattr(mod.os.path, "exists", lambda p: True)
+        monkeypatch.setattr(mod.os.path, "isdir", lambda p: True)
+        called = {}
+        monkeypatch.setattr(mod.os, "startfile", lambda p: called.setdefault("dir", p))
+        monkeypatch.setattr(mod.sys, "platform", "win32")
+
+        assert host.open_directory("/some/dir") is True
+        assert called["dir"] == "/some/dir"
+
+    def test_open_directory_file_opens_parent(self, monkeypatch):
+        host = AppHost()
+        import backend.api_app as mod
+        monkeypatch.setattr(mod.os.path, "exists", lambda p: True)
+        monkeypatch.setattr(mod.os.path, "isdir", lambda p: False)
+        monkeypatch.setattr(mod.os.path, "dirname", lambda p: "/parent")
+        called = {}
+        monkeypatch.setattr(mod.os, "startfile", lambda p: called.setdefault("dir", p))
+        monkeypatch.setattr(mod.sys, "platform", "win32")
+
+        assert host.open_directory("/parent/file.vpk") is True
+        assert called["dir"] == "/parent"
+
+    def test_browse_directory_with_dialog_result_list(self, monkeypatch):
+        host = AppHost()
+        import backend.api_app as mod
+        host._window = MagicMock()
+        host._window.create_file_dialog.return_value = ("/picked/dir",)
+        host.storage_service.get_l4d2_directory.return_value = None
+        monkeypatch.setattr(mod.Path, "home", lambda: mod.Path("/home"))
+
+        assert host.browse_directory() == "/picked/dir"
+
+    def test_browse_directory_user_cancel(self):
+        host = AppHost()
+        host._window = MagicMock()
+        host._window.create_file_dialog.return_value = ()
+
+        assert host.browse_directory() is None
+
+    def test_open_external_url_opens_browser(self, monkeypatch):
+        host = AppHost()
+        import backend.api_app as mod
+        called = {}
+        monkeypatch.setattr(mod.webbrowser, "open", lambda url: called.setdefault("url", url))
+
+        host.open_external_url("https://example.com")
+
+        assert called["url"] == "https://example.com"
+
+    def test_reset_app_data_keeps_preferences_and_exits(self, tmp_path, monkeypatch):
+        """重置:删除除 preferences.json 外的所有内容,随后 os._exit(不真退)"""
+        host = AppHost()
+        import backend.api_app as mod
+
+        storage_dir = tmp_path / "Documents" / "L4D2-VPK-Manager"
+        storage_dir.mkdir(parents=True)
+        (storage_dir / "preferences.json").write_text("{}", encoding="utf-8")
+        (storage_dir / "vpk_manager.log").write_text("log", encoding="utf-8")
+        (storage_dir / ".vpk_config").mkdir()
+        (storage_dir / ".vpk_config" / "c.json").write_text("{}", encoding="utf-8")
+
+        monkeypatch.setattr(mod.Path, "home", lambda: tmp_path)
+        exited = {}
+        def fake_exit(code=0):
+            exited["code"] = code
+            raise SystemExit
+        monkeypatch.setattr(mod.os, "_exit", fake_exit)
+
+        with pytest.raises(SystemExit):
+            host.reset_app_data()
+
+        assert exited["code"] == 0
+        assert (storage_dir / "preferences.json").exists()
+        assert not (storage_dir / "vpk_manager.log").exists()
+        assert not (storage_dir / ".vpk_config").exists()
+
+    def test_reset_app_data_missing_dir_returns_true(self, tmp_path, monkeypatch):
+        host = AppHost()
+        import backend.api_app as mod
+        monkeypatch.setattr(mod.Path, "home", lambda: tmp_path)
+        assert host.reset_app_data() is True
