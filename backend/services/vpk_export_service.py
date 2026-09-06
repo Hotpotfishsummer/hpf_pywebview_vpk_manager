@@ -172,20 +172,3 @@ class VpkExportService:
         logger.info(f"_generate_archive_name: generated archive name: {archive_name}")
         return archive_name
 
-    @staticmethod
-    def get_downloads_directory() -> str:
-        """Get user's Downloads directory path"""
-        if os.name == 'nt':  # Windows
-            # Try using environment variable first
-            downloads = os.environ.get('USERPROFILE')
-            if downloads:
-                downloads = str(Path(downloads) / 'Downloads')
-                if Path(downloads).exists():
-                    return downloads
-        else:  # macOS and Linux
-            downloads = os.path.expanduser('~/Downloads')
-            if Path(downloads).exists():
-                return downloads
-
-        # Fallback to home directory
-        return os.path.expanduser('~')
