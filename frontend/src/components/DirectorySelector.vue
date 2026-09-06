@@ -54,7 +54,7 @@ async function handleImport() {
   try {
     const result = await store.importVpks()
     if (result) {
-      if (result.imported_count > 0) {
+      if ((result.imported_count ?? 0) > 0) {
         const type = result.success ? 'success' : 'info'
         const msg = result.success 
           ? $t('importSuccess', { count: result.imported_count }) 

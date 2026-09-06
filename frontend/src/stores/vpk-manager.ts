@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import i18n from '@/i18n'
 import { getApi, callApi } from '@/composables/useApi'
+import type { RemoteFile } from '@/types/api'
 
 // 组件外使用 vue-i18n 的全局实例,保证通知文案跟随当前语言
 const $t = i18n.global.t
@@ -43,7 +44,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     addons_path: ''
   })
 
-  const remoteVpkFiles = ref<any[]>([])
+  const remoteVpkFiles = ref<RemoteFile[]>([])
   const selectedRemoteVpks = reactive(new Set<string>())
   
   // 消息提示状态
@@ -178,7 +179,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
         useBetterNaming.value
       )
 
-      if (result.success_count > 0) {
+      if ((result.success_count ?? 0) > 0) {
         // 本地化成功（至少部分），刷新列表
         selectedWorkshopVpks.clear()
         await scanVpks(currentDirectory.value)
@@ -298,8 +299,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       const result = await getApi().delete_multiple_remote_vpks(paths)
       if (result.success) {
         showNotification($t('remoteDeletedSelected'), 'success')
-      } else if (result.success_count > 0) {
-        showNotification($t('remoteDeletePartial', { success: result.success_count, failed: result.error_count }), 'info')
+      } else if ((result.success_count ?? 0) > 0) {
+        showNotification($t('remoteDeletePartial', { success: result.success_count ?? 0, failed: result.error_count ?? 0 }), 'info')
       } else {
         showNotification($t('deleteActionFailed'), 'error')
       }
@@ -462,8 +463,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
       // Use batch delete method for better performance
       const result = await getApi().delete_multiple_vpk_files(paths, disable)
       
-      if (!result.success && result.error_count > 0) {
-        showNotification($t('deletePartialFailed', { count: result.error_count }), 'error')
+      if (!result.success && (result.error_count ?? 0) > 0) {
+        showNotification($t('deletePartialFailed', { count: result.error_count ?? 0 }), 'error')
       } else if (result.success) {
         // Deleted successfully, clear selections that were processed
         if (targetPaths) {
