@@ -64,10 +64,35 @@ $frontendProcess = Start-Process -FilePath "npm" `
 
 Write-Host "正在启动 Python 后端 (PyWebView)..." -ForegroundColor Cyan
 
+# 确定后端 python:优先已激活环境;否则直接定位环境内 python.exe
+$pythonExe = "python"
+if ($env:CONDA_DEFAULT_ENV -ne $targetEnv) {
+    $condaBase = (& conda info --base 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $condaBase) {
+        $envPython = Join-Path $condaBase "envs\$targetEnv\python.exe"
+        if (Test-Path $envPython) {
+            $pythonExe = $envPython
+            Write-Host "未激活 Conda 环境,直接使用: $pythonExe" -ForegroundColor Yellow
+        } else {
+            Write-Host "错误: 找不到环境 $targetEnv 的 python.exe" -ForegroundColor Red
+            if ($frontendProcess -and -not $frontendProcess.HasExited) {
+                Stop-Process -InputObject $frontendProcess -Force
+            }
+            exit 1
+        }
+    } else {
+        Write-Host "错误: 找不到 conda,无法定位环境 $targetEnv" -ForegroundColor Red
+        if ($frontendProcess -and -not $frontendProcess.HasExited) {
+            Stop-Process -InputObject $frontendProcess -Force
+        }
+        exit 1
+    }
+}
+
 # 启动后端
 Push-Location $projectRoot
 $env:PYWEBVIEW_DEV = "true"
-python main.py
+& $pythonExe main.py
 Pop-Location
 
 # 退出时清理进程
