@@ -64,3 +64,27 @@ class TestApplyAutoexecTemplate:
         l4d2 = root / "left4dead2"
         assert svc.apply_autoexec_template(str(l4d2)) is True
         assert (l4d2 / "cfg" / "autoexec.cfg").exists()
+
+
+class TestErrorPaths:
+    def test_unreadable_existing_cfg_forces_overwrite(self, tmp_path):
+        """现有 autoexec.cfg 读取失败(如编码问题)时:警告、备份、覆盖"""
+        svc, root, cfg = _make_env(tmp_path)
+        autoexec = cfg / "autoexec.cfg"
+        autoexec.write_bytes(b"\xff\xfe\x00binary")  # 非法 UTF-8
+
+        assert svc.apply_autoexec_template(str(root)) is True
+        assert (cfg / "autoexec.cfg.bak").exists()  # 备份了坏文件
+        assert (cfg / "autoexec.cfg").read_text(encoding="utf-8") != ""
+
+    def test_template_write_failure_returns_false(self, tmp_path, monkeypatch):
+        """写入 autoexec.cfg 失败时返回 False 而非抛错"""
+        import backend.services.config_service as mod
+        svc, root, cfg = _make_env(tmp_path)
+        (cfg / "autoexec.cfg").write_text("old", encoding="utf-8")
+
+        def boom(*args, **kwargs):
+            raise IOError("locked")
+        monkeypatch.setattr(mod.shutil, "copy2", boom)
+
+        assert svc.apply_autoexec_template(str(root)) is False
