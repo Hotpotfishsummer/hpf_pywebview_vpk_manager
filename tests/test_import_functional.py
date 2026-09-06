@@ -105,3 +105,24 @@ class TestImportCompressedFiles:
         )
         assert result["success"] is False
         assert any("文件不存在" in e for e in (result["errors"] or []))
+
+
+class TestPathTraversalGuard:
+    def test_7z_rejects_traversal_entry(self, tmp_path):
+        """恶意 7z(条目名含 ..)不得写出目标目录,也不得逃逸到目录外"""
+        archive = tmp_path / "evil.7z"
+        payload = tmp_path / "payload.vpk"
+        payload.write_bytes(b"vpk")
+        with py7zr.SevenZipFile(archive, "w") as z:
+            z.write(payload, arcname="sub/../../evil.vpk")
+
+        addons = tmp_path / "addons"
+        addons.mkdir()
+        outside = tmp_path / "evil.vpk"
+
+        result = VpkImportService.import_compressed_files([str(archive)], str(addons))
+
+        assert result["success"] is False
+        assert result["imported_count"] == 0
+        assert not addons.exists() or list(addons.iterdir()) == []
+        assert not outside.exists(), "条目逃逸了目标目录!"

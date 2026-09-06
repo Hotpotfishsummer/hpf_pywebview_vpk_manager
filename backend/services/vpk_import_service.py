@@ -91,6 +91,10 @@ class VpkImportService:
             # py7zr getnames 返回所有文件
             for name in z.getnames():
                 if VpkImportService._is_vpk_or_image(name):
+                    # 路径穿越防护:含 ".." 组件的条目名会在 extract 阶段逃逸目标目录
+                    # (zip/tar 分支走 basename 扁平化无此问题)
+                    if '..' in Path(name).parts:
+                        raise Exception(f"压缩包内含非法路径条目: {name}")
                     filename = os.path.basename(name)
                     if not filename: continue
                     
