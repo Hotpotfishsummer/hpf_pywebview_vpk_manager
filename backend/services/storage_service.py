@@ -1,9 +1,12 @@
 """用户偏好设置和数据持久化的存储服务"""
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class StorageService:
@@ -42,12 +45,12 @@ class StorageService:
             with open(self._storage_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError) as e:
-            print(f"加载偏好设置出错: {e}")
+            logger.error(f"加载偏好设置出错: {e}")
             # 损坏文件重命名留证，避免每次启动都在同一个坏文件上失败
             try:
                 corrupt = self._storage_file.with_suffix('.json.corrupt')
                 os.replace(self._storage_file, corrupt)
-                print(f"已将损坏的偏好文件重命名为: {corrupt}")
+                logger.info(f"已将损坏的偏好文件重命名为: {corrupt}")
             except OSError:
                 pass
             return {}
@@ -60,13 +63,13 @@ class StorageService:
                 json.dump(self._preferences, f, ensure_ascii=False, indent=2)
             os.replace(tmp_file, self._storage_file)
         except IOError as e:
-            print(f"保存偏好设置出错: {e}")
+            logger.error(f"保存偏好设置出错: {e}")
 
     def set(self, key: str, value: Any):
         """设置偏好值"""
         self._preferences[key] = value
         self._save_preferences()
-        print(f"StorageService.set: key='{key}', value='{value}'")
+        logger.info(f"StorageService.set: key='{key}', value='{value}'")
 
     def get(self, key: str, default: Any = None) -> Any:
         """获取偏好值"""
@@ -77,13 +80,13 @@ class StorageService:
         if key in self._preferences:
             del self._preferences[key]
             self._save_preferences()
-            print(f"StorageService.remove: key='{key}'")
+            logger.info(f"StorageService.remove: key='{key}'")
 
     def clear(self):
         """清除所有偏好"""
         self._preferences.clear()
         self._save_preferences()
-        print("StorageService.clear: 所有偏好已清除")
+        logger.info("StorageService.clear: 所有偏好已清除")
 
     def get_l4d2_directory(self) -> Optional[str]:
         """获取保存的 L4D2 目录路径"""

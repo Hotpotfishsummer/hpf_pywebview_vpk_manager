@@ -3,12 +3,16 @@
 from pathlib import Path
 from typing import List, Optional
 import shutil
+import logging
 import os
 import tempfile
 import time
 import tarfile
 import multiprocessing
 import re
+
+logger = logging.getLogger(__name__)
+
 
 from ..naming import build_export_base_name, find_associated_images
 
@@ -56,7 +60,7 @@ class VpkExportService:
             archive_name = VpkExportService._generate_archive_name(vpk_file_paths, titles)
             archive_path = output_path / f"{archive_name}.tar.zst"
 
-            print(f"export_vpks: creating archive {archive_path}")
+            logger.info(f"export_vpks: creating archive {archive_path}")
 
             # Create unique temporary directory for collecting files
             # (固定名 .vpk_temp 在残留/并行导出时会互相覆盖)
@@ -75,21 +79,21 @@ class VpkExportService:
                     # Copy VPK file
                     if vpk_path.exists():
                         dest = temp_dir / f"{base_name}.vpk"
-                        print(f"export_vpks: copying {vpk_path} to {dest}")
+                        logger.info(f"export_vpks: copying {vpk_path} to {dest}")
                         shutil.copy2(vpk_path, dest)
 
                         # 复制同名的关联图片(缩略图),大小写不敏感且每种扩展名只取一次
                         for f_path, f_ext in find_associated_images(str(vpk_path.parent), vpk_path.name):
                             img_dest = temp_dir / f"{base_name}{f_ext}"
-                            print(f"export_vpks: copying associated image {f_path} to {img_dest}")
+                            logger.info(f"export_vpks: copying associated image {f_path} to {img_dest}")
                             shutil.copy2(f_path, img_dest)
 
                 # Create tar.zst archive with zstandard compression
-                print(f"export_vpks: creating zstandard compressed archive with high compression")
+                logger.info(f"export_vpks: creating zstandard compressed archive with high compression")
 
                 # Get system CPU count for multi-threaded compression
                 num_threads = max(1, multiprocessing.cpu_count() - 1)  # Leave one core free
-                print(f"export_vpks: using {num_threads} threads for compression")
+                logger.info(f"export_vpks: using {num_threads} threads for compression")
 
                 # Create zstandard context with maximum compression level and multi-threading
                 cctx = zstd.ZstdCompressor(
@@ -99,30 +103,30 @@ class VpkExportService:
                 )
 
                 # Create tar archive and compress with zstandard
-                print(f"export_vpks: compressing files into {archive_path}")
+                logger.info(f"export_vpks: compressing files into {archive_path}")
                 with open(archive_path, 'wb') as f_out:
                     with cctx.stream_writer(f_out, closefd=False) as writer:
                         with tarfile.open(fileobj=writer, mode='w|') as tar:
                             # Add all files from temp directory to tar
                             for file_path in sorted(temp_dir.iterdir()):
                                 if file_path.is_file():
-                                    print(f"export_vpks: adding {file_path.name} to archive")
+                                    logger.info(f"export_vpks: adding {file_path.name} to archive")
                                     tar.add(file_path, arcname=file_path.name)
 
                 elapsed_time = time.time() - start_time
                 archive_size = archive_path.stat().st_size / (1024 * 1024)  # Size in MB
-                print(f"export_vpks: successfully created {archive_path} ({archive_size:.2f} MB) in {elapsed_time:.2f} seconds")
+                logger.info(f"export_vpks: successfully created {archive_path} ({archive_size:.2f} MB) in {elapsed_time:.2f} seconds")
                 return str(archive_path)
 
             finally:
                 # Clean up temp directory
                 if temp_dir.exists():
                     shutil.rmtree(temp_dir)
-                    print(f"export_vpks: cleaned up temp directory")
+                    logger.info(f"export_vpks: cleaned up temp directory")
 
         except Exception as e:
             error_msg = f'Error exporting VPK files: {str(e)}'
-            print(f"export_vpks: {error_msg}")
+            logger.info(f"export_vpks: {error_msg}")
             raise
 
     @staticmethod
@@ -165,7 +169,7 @@ class VpkExportService:
         if not archive_name.strip() or archive_name == "...":
             archive_name = f"vpk_export_{int(time.time())}"
 
-        print(f"_generate_archive_name: generated archive name: {archive_name}")
+        logger.info(f"_generate_archive_name: generated archive name: {archive_name}")
         return archive_name
 
     @staticmethod

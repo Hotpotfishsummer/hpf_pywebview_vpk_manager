@@ -1,20 +1,14 @@
 """VPK 元数据提取和缓存服务"""
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any
 import vpk
 import base64
 
-
-def _safe_print(msg: str):
-    """安全的 print，处理编码错误"""
-    try:
-        print(msg)
-    except UnicodeEncodeError:
-        # 如果编码失败，替换有问题的字符
-        print(msg.encode('utf-8', errors='replace').decode('utf-8', errors='replace'))
+logger = logging.getLogger(__name__)
 
 
 class VpkMetadataService:
@@ -41,7 +35,7 @@ class VpkMetadataService:
                 with open(json_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
-                _safe_print(f"load_metadata: 加载 JSON {json_path} 失败: {e}")
+                logger.info(f"load_metadata: 加载 JSON {json_path} 失败: {e}")
         return None
 
     def save_metadata(self, vpk_file_path: str, metadata: Optional[Dict[str, Any]]) -> bool:
@@ -52,10 +46,10 @@ class VpkMetadataService:
             with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(metadata or {}, f, ensure_ascii=False, indent=2)
             os.replace(tmp_path, json_path)
-            _safe_print(f"save_metadata: 已保存元数据到 {json_path}")
+            logger.info(f"save_metadata: 已保存元数据到 {json_path}")
             return True
         except Exception as e:
-            _safe_print(f"save_metadata: 保存 JSON {json_path} 失败: {e}")
+            logger.info(f"save_metadata: 保存 JSON {json_path} 失败: {e}")
             return False
 
     def extract_addontitle(self, vpk_file_path: str) -> Optional[str]:
@@ -72,7 +66,7 @@ class VpkMetadataService:
                 try:
                     raw_data = vpk_file['addoninfo.txt'].read()
                 except Exception as e:
-                    _safe_print(f"extract_addontitle: 读取 addoninfo.txt 字节流失败: {e}")
+                    logger.info(f"extract_addontitle: 读取 addoninfo.txt 字节流失败: {e}")
                     return None
 
                 for encoding in ['utf-8', 'gbk', 'utf-16', 'big5', 'latin-1']:
@@ -92,10 +86,10 @@ class VpkMetadataService:
                 addontitle = self._parse_addontitle(addoninfo_data)
                 return addontitle
             else:
-                _safe_print(f"extract_addontitle: {vpk_file_path} 中未找到 addoninfo.txt")
+                logger.info(f"extract_addontitle: {vpk_file_path} 中未找到 addoninfo.txt")
                 return None
         except Exception as e:
-            _safe_print(f"extract_addontitle: 从 {vpk_file_path} 提取失败: {e}")
+            logger.info(f"extract_addontitle: 从 {vpk_file_path} 提取失败: {e}")
             return None
 
     def _parse_addontitle(self, addoninfo_content: str) -> Optional[str]:
@@ -115,7 +109,7 @@ class VpkMetadataService:
                         return parts[1]
             return None
         except Exception as e:
-            _safe_print(f"_parse_addontitle: 解析 addoninfo 内容失败: {e}")
+            logger.info(f"_parse_addontitle: 解析 addoninfo 内容失败: {e}")
             return None
 
     def get_or_extract_metadata(self, vpk_file_path: str) -> Optional[Dict[str, Any]]:
@@ -123,11 +117,11 @@ class VpkMetadataService:
         path = Path(vpk_file_path)
         cached_metadata = self.load_metadata(vpk_file_path)
         if cached_metadata is not None and self._cache_is_fresh(cached_metadata, path):
-            _safe_print(f"get_or_extract_metadata: 使用缓存的元数据 {vpk_file_path}")
+            logger.info(f"get_or_extract_metadata: 使用缓存的元数据 {vpk_file_path}")
             return cached_metadata or None
 
         # 缓存缺失或已失效，从 VPK 提取
-        _safe_print(f"get_or_extract_metadata: 从 {vpk_file_path} 提取元数据")
+        logger.info(f"get_or_extract_metadata: 从 {vpk_file_path} 提取元数据")
         addontitle = self.extract_addontitle(vpk_file_path)
 
         # 创建元数据字典（即使在错误情况下也为空）
@@ -204,7 +198,7 @@ class VpkMetadataService:
                             thumbnail_url = f"data:{mime_type};base64,{encoded_string}"
                         break
                     except Exception as e:
-                        _safe_print(f"读取图片失败 {thumb_path}: {e}")
+                        logger.info(f"读取图片失败 {thumb_path}: {e}")
 
             return VpkFile(
                 name=path.name,
@@ -217,5 +211,5 @@ class VpkMetadataService:
                 thumbnail_path=thumbnail_url,  # 存储 base64 数据
             )
         except Exception as e:
-            _safe_print(f"get_vpk_metadata: 获取 {vpk_file_path} 的元数据失败: {e}")
+            logger.info(f"get_vpk_metadata: 获取 {vpk_file_path} 的元数据失败: {e}")
             return None

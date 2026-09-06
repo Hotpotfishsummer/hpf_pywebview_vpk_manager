@@ -274,7 +274,7 @@ class VpkManagerApi(SftpApiMixin):
             return True
         except Exception as e:
             # 此处可能因为日志句柄已关而无法记录
-            print(f"重置应用数据出错: {e}")
+            logger.error(f"重置应用数据出错: {e}")
             return False
 
     def get_downloads_directory(self) -> str:
