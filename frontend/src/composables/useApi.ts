@@ -46,6 +46,22 @@ export function getApi(): PyWebViewApi {
   return api
 }
 
+/**
+ * 统一的 API 调用封装：捕获 API 未就绪与调用异常，避免未处理的 promise rejection。
+ * 适用于不需要向用户通知失败细节的场景；需要区分成功/失败的调用仍应自行 try/catch。
+ */
+export async function callApi<T>(
+  operation: (api: PyWebViewApi) => Promise<T>,
+  fallback: T
+): Promise<T> {
+  try {
+    return await operation(getApi())
+  } catch (error) {
+    console.error('PyWebView API 调用失败:', error)
+    return fallback
+  }
+}
+
 export function usePyWebViewApi() {
   const isApiReady = ref(false)
 

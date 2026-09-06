@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import i18n from '@/i18n'
-import { getApi } from '@/composables/useApi'
+import { getApi, callApi } from '@/composables/useApi'
 
 // 组件外使用 vue-i18n 的全局实例,保证通知文案跟随当前语言
 const $t = i18n.global.t
@@ -405,13 +405,13 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   async function openAddonsFolder() {
     if (!currentDirectory.value) return
     const path = `${currentDirectory.value}/left4dead2/addons`
-    await getApi().open_directory(path)
+    await callApi(api => api.open_directory(path), false)
   }
 
   async function openWorkshopFolder() {
     if (!currentDirectory.value) return
     const path = `${currentDirectory.value}/left4dead2/addons/workshop`
-    await getApi().open_directory(path)
+    await callApi(api => api.open_directory(path), false)
   }
 
   async function exportVpks(outputDir: string) {
