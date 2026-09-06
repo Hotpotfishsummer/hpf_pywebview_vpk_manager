@@ -70,7 +70,7 @@ python main.py
 # 打包为单一 .exe 文件
 .\scripts\package-nuitka.ps1
 
-# 输出文件：dist/main.exe
+# 输出文件：dist/L4D2-VPK-Manager.exe
 ```
 
 ## 项目结构
