@@ -144,11 +144,12 @@ python main.py
 
 ### 后端 API（Python）
 
-`backend/api.py` 中的 `VpkManagerApi` 类（SFTP 方法在 `api_sftp.py` 的 `SftpApiMixin`）
+`backend/api.py` 中的 `VpkManagerApi` 类（SFTP/目录系统/VPK 核心操作分别在
+`api_sftp.py`/`api_app.py`/`api_ops.py` 的三个 Mixin 中）
 向 pywebview 暴露同步方法，pywebview 在独立线程中调用并返回 Promise：
 
 ```python
-class VpkManagerApi(SftpApiMixin):
+class VpkManagerApi(SftpApiMixin, AppApiMixin, VpkOpsApiMixin):
     _PUBLIC_METHODS = {...}  # 前端可见方法白名单（有双向一致性守卫测试）
     def scan_vpk_files(self, directory: str) -> dict
     def export_vpks(self, file_paths: List[str], output_dir: str, better_naming: bool = False) -> dict
