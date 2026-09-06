@@ -107,7 +107,6 @@ class AppApiMixin:
 
             # 定义 STORAGE_BASE_DIR（与类外部定义的保持一致）
             storage_dir = Path.home() / 'Documents' / 'L4D2-VPK-Manager'
-            pref_file = storage_dir / 'preferences.json'
 
             if not storage_dir.exists():
                 return True

@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import List, Optional
 import shutil
 import logging
-import os
 import tempfile
 import time
 import tarfile
@@ -89,7 +88,7 @@ class VpkExportService:
                             shutil.copy2(f_path, img_dest)
 
                 # Create tar.zst archive with zstandard compression
-                logger.info(f"export_vpks: creating zstandard compressed archive with high compression")
+                logger.info("export_vpks: creating zstandard compressed archive with high compression")
 
                 # Get system CPU count for multi-threaded compression
                 num_threads = max(1, multiprocessing.cpu_count() - 1)  # Leave one core free
@@ -122,7 +121,7 @@ class VpkExportService:
                 # Clean up temp directory
                 if temp_dir.exists():
                     shutil.rmtree(temp_dir)
-                    logger.info(f"export_vpks: cleaned up temp directory")
+                    logger.info("export_vpks: cleaned up temp directory")
 
         except Exception as e:
             error_msg = f'Error exporting VPK files: {str(e)}'

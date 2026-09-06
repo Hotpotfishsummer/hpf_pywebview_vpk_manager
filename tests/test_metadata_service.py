@@ -63,7 +63,6 @@ class TestMetadataCache:
         assert svc.save_metadata(vpk_path, {"addontitle": "v1"}) is True
         assert svc.save_metadata(vpk_path, {"addontitle": "v2"}) is True
 
-        json_path = tmp_path / "vpk_config" / "mymod.json"
         assert not (tmp_path / "vpk_config" / "mymod.json.tmp").exists()
         assert svc.load_metadata(vpk_path) == {"addontitle": "v2"}
 
@@ -226,7 +225,6 @@ class TestCacheInvalidationBySize:
 
 class TestErrorPaths:
     def test_save_metadata_failure_returns_false_and_cleans_tmp(self, tmp_path):
-        svc = _make_service(tmp_path)
         # 把 config 目录变成文件,使写入必然失败
         cfg_file = tmp_path / "not_a_dir"
         cfg_file.write_text("", encoding="utf-8")

@@ -89,7 +89,7 @@ def find_associated_images(
     seen_exts = set()
     try:
         entries = os.listdir(directory)
-    except OSError as e:
+    except OSError:
         # 目录不可读时视为无关联文件(与原实现一致)
         return results
 

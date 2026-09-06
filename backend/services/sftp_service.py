@@ -1,10 +1,9 @@
 """SFTP 远程文件管理服务"""
 
 import os
-import stat
 import logging
 import paramiko
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)

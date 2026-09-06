@@ -1,6 +1,5 @@
 """vpk_export_service 纯函数的单元测试"""
 
-from pathlib import Path
 
 from backend.services.vpk_export_service import VpkExportService
 

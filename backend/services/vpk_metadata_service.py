@@ -8,6 +8,8 @@ from typing import Optional, Dict, Any
 import vpk
 import base64
 
+from ..models import VpkFile
+
 logger = logging.getLogger(__name__)
 
 
@@ -177,9 +179,6 @@ class VpkMetadataService:
 
     def get_vpk_metadata(self, vpk_file_path: str) -> Optional['VpkFile']:
         """获取完整的 VPK 文件元数据作为 VpkFile 对象"""
-        from ..models import VpkFile
-        import os
-
         try:
             path = Path(vpk_file_path)
             stat = path.stat()

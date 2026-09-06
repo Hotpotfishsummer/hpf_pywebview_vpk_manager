@@ -4,7 +4,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-import webview
 
 from .services.vpk_metadata_service import VpkMetadataService
 from .services.vpk_export_service import VpkExportService

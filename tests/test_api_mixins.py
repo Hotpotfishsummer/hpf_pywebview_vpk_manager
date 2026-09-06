@@ -251,7 +251,6 @@ class TestAppApiMixinDeep:
     def test_open_directory_uses_startfile_on_windows(self, monkeypatch):
         host = AppHost()
         import backend.api_app as mod
-        real_exists = mod.os.path.exists
         monkeypatch.setattr(mod.os.path, "exists", lambda p: True)
         monkeypatch.setattr(mod.os.path, "isdir", lambda p: True)
         called = {}
@@ -407,8 +406,6 @@ class TestOpsApiMixinDeep:
         host, addons = self._make_env(tmp_path)
         (addons / "a.vpk").write_bytes(b"x")
         (addons / "b.vpk").write_bytes(b"x")
-
-        real = OpsHost._disable_or_delete_single.__func__ if hasattr(OpsHost._disable_or_delete_single, "__func__") else OpsHost._disable_or_delete_single
 
         def flaky(file_path, disable):
             if file_path.endswith("b.vpk"):
