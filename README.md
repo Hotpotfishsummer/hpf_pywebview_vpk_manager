@@ -196,6 +196,9 @@ const deleteResult = await getApi().delete_vpk_file(
 </template>
 ```
 
+翻译文件由三重 pytest 守卫保护：en/zh 键集一致、占位符（`{count}` 等）一致、
+未使用的死键不允许存在（见 `tests/test_i18n_locales.py` 与 `tests/test_i18n_unused_keys.py`）。
+
 ## 测试
 
 后端单元测试基于 pytest（依赖已在 requirements.txt / environment.yml 中，含 pytest-cov）：
