@@ -39,10 +39,13 @@ def vpk_stem_for_association(filename: str) -> str:
 
 
 def sanitize_addon_title(title: str) -> str:
-    """把 addontitle 清洗为安全的文件名:空格转下划线、非法字符替换、合并连续下划线"""
+    """把 addontitle 清洗为安全的文件名:空格转下划线、非法字符替换、合并连续下划线
+
+    另去除尾部点号——Windows 文件名不允许以点结尾(创建时会失败或被静默改动)。
+    """
     custom_title = title.replace(" ", "_").strip()
     base_name = re.sub(_ILLEGAL_CHARS_PATTERN, '_', custom_title)
-    return re.sub(r'_{2,}', '_', base_name)
+    return re.sub(r'_{2,}', '_', base_name).rstrip('.')
 
 
 def build_export_base_name(addontitle: Optional[str], filename: str, fallback_stem: str) -> str:

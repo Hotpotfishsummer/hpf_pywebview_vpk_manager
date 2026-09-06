@@ -170,3 +170,27 @@ class TestVpkStemForAssociationEdgeCases:
     def test_disabled_suffix_must_be_tail(self):
         # 'disabled' 出现在中间不算禁用后缀
         assert vpk_stem_for_association("mod.disabled.vpk") == "mod.disabled"
+
+
+class TestTrailingDotSanitization:
+    """Windows 文件名不允许尾部点号(backlog #54)"""
+
+    def test_single_trailing_dot_stripped(self):
+        assert sanitize_addon_title("My Mod.") == "My_Mod"
+
+    def test_multiple_trailing_dots_stripped(self):
+        assert sanitize_addon_title("Title...") == "Title"
+
+    def test_trailing_underscore_is_legal_kept(self):
+        assert sanitize_addon_title("Title_.") == "Title_"
+
+    def test_inner_dots_are_legal_kept(self):
+        # Windows 仅禁止尾部点号;中间点号合法应保留
+        assert sanitize_addon_title("ver.1.2") == "ver.1.2"
+
+    def test_dots_only_title_becomes_empty(self):
+        assert sanitize_addon_title("...") == ""
+
+    def test_build_export_base_name_dot_title_falls_back(self):
+        # 纯点号标题清洗后为空 → 回退原文件 stem
+        assert build_export_base_name("...", "mod.vpk", "fallback") == "fallback"
