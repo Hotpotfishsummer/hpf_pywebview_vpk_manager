@@ -107,10 +107,6 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     return [...Array.from(selectedLocalVpks), ...Array.from(selectedWorkshopVpks)]
   }
 
-  function clearError() {
-    notification.message = ''
-  }
-
     /** 扫描本地与创意工坊 VPK 列表(经后端 scan_vpk_files) */
 async function scanVpks(directory: string) {
     if (!directory) return
@@ -549,7 +545,6 @@ async function uploadLocalVpks() {
     selectAllRemote,
     deselectAllRemote,
     getSelectedVpkPaths,
-    clearError,
     scanVpks,
     importVpks,
     localizeVpks,
