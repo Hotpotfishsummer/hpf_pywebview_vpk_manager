@@ -7,3 +7,4 @@ python-dotenv>=1.2.1
 paramiko>=3.4.0
 Nuitka>=1.8.0
 PyInstaller>=6.0.0
+pytest>=8.0.0
