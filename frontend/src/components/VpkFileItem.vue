@@ -44,6 +44,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VpkFile } from '@/stores/vpk-manager'
+import { callApi } from '@/composables/useApi'
 
 const props = defineProps<{
   vpk: VpkFile
@@ -63,7 +64,7 @@ const workshopId = computed(() => {
 async function openWorkshop() {
   if (workshopId.value) {
     const url = `https://steamcommunity.com/sharedfiles/filedetails/?id=${workshopId.value}`
-    await (window as any).pywebview.api.open_external_url(url)
+    await callApi(api => api.open_external_url(url), undefined)
   }
 }
 

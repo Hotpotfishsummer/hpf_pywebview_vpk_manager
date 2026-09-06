@@ -99,3 +99,19 @@ class TestArchiveNamingDeterminism:
         # 覆盖后内容为新版本(长度可区分)
         import os
         assert os.path.getsize(archive2) > 0
+
+
+class TestGenerateArchiveNameEdgeCases:
+    def test_overlong_name_truncated_with_ellipsis(self):
+        names = ["x" * 40, "y" * 40, "z" * 40]  # 拼接后 122 字符
+        name = VpkExportService._generate_archive_name(names)
+        assert len(name) <= 100
+        assert name.endswith("...")
+
+    def test_empty_stem_falls_back_to_timestamp(self):
+        name = VpkExportService._generate_archive_name([""], titles=[None])
+        assert name.startswith("vpk_export_")
+
+    def test_illegal_chars_replaced(self):
+        name = VpkExportService._generate_archive_name(['a<b>c:d"e'], titles=[None])
+        assert not any(c in name for c in '<>:"')

@@ -126,3 +126,21 @@ class TestPathTraversalGuard:
         assert result["imported_count"] == 0
         assert not addons.exists() or list(addons.iterdir()) == []
         assert not outside.exists(), "条目逃逸了目标目录!"
+
+
+class TestDuplicateBasenameOverwrite:
+    def test_zip_duplicate_basenames_last_write_wins(self, tmp_path):
+        """两个嵌套条目扁平化后同名 → 后写覆盖前写(固化当前行为)"""
+        archive = tmp_path / "dup.zip"
+        with zipfile.ZipFile(archive, "w") as z:
+            z.writestr("a/mod.vpk", b"content A")
+            z.writestr("b/mod.vpk", b"content B")
+
+        addons = tmp_path / "addons"
+        addons.mkdir()
+
+        result = VpkImportService.import_compressed_files([str(archive)], str(addons))
+
+        assert result["success"] is True
+        # 只有一个 mod.vpk,内容为后写的 B
+        assert (addons / "mod.vpk").read_bytes() == b"content B"
