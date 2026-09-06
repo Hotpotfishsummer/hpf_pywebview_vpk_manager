@@ -106,8 +106,10 @@ python main.py
 │   └── vite.config.js
 │
 ├── backend/                       # Python 后端
-│   ├── api.py                     # PyWebView API 接口（核心方法）
+│   ├── api.py                     # PyWebView API 组装层（_PUBLIC_METHODS / 服务装配）
 │   ├── api_sftp.py                # SFTP 相关 API 方法（SftpApiMixin）
+│   ├── api_app.py                 # 目录/系统交互 API 方法（AppApiMixin）
+│   ├── api_ops.py                 # VPK 核心操作 API 方法（VpkOpsApiMixin）
 │   ├── models.py                  # 数据模型
 │   ├── naming.py                  # 共享的 VPK 命名/清洗逻辑
 │   └── services/
