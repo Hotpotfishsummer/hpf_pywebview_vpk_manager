@@ -97,51 +97,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useVpkManagerStore, VpkFile } from '@/stores/vpk-manager'
+import { useVpkManagerStore } from '@/stores/vpk-manager'
 import VpkFileItem from '@/components/VpkFileItem.vue'
+import { useVpkSection } from '@/composables/useVpkSection'
 
 const store = useVpkManagerStore()
-const localExpanded = ref(true)
-const workshopExpanded = ref(true)
 
-const allLocalSelected = computed(() => {
-  return (
-    store.localVpkFiles.length > 0 &&
-    store.localVpkFiles.every((vpk: VpkFile) => store.selectedLocalVpks.has(vpk.path))
-  )
-})
+const localSection = useVpkSection(
+  () => store.localVpkFiles,
+  () => store.selectedLocalVpks,
+  () => store.selectAllLocal(),
+  () => store.deselectAllLocal()
+)
 
-const allWorkshopSelected = computed(() => {
-  return (
-    store.workshopVpkFiles.length > 0 &&
-    store.workshopVpkFiles.every((vpk: VpkFile) => store.selectedWorkshopVpks.has(vpk.path))
-  )
-})
+const workshopSection = useVpkSection(
+  () => store.workshopVpkFiles,
+  () => store.selectedWorkshopVpks,
+  () => store.selectAllWorkshop(),
+  () => store.deselectAllWorkshop()
+)
 
-function toggleLocalExpanded() {
-  localExpanded.value = !localExpanded.value
-}
+const {
+  expanded: localExpanded,
+  allSelected: allLocalSelected,
+  toggleExpanded: toggleLocalExpanded,
+  toggleAll: toggleAllLocal,
+} = localSection
 
-function toggleWorkshopExpanded() {
-  workshopExpanded.value = !workshopExpanded.value
-}
-
-function toggleAllLocal() {
-  if (allLocalSelected.value) {
-    store.deselectAllLocal()
-  } else {
-    store.selectAllLocal()
-  }
-}
-
-function toggleAllWorkshop() {
-  if (allWorkshopSelected.value) {
-    store.deselectAllWorkshop()
-  } else {
-    store.selectAllWorkshop()
-  }
-}
+const {
+  expanded: workshopExpanded,
+  allSelected: allWorkshopSelected,
+  toggleExpanded: toggleWorkshopExpanded,
+  toggleAll: toggleAllWorkshop,
+} = workshopSection
 </script>
 
 <style scoped>
