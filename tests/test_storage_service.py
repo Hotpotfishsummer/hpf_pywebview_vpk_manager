@@ -74,3 +74,34 @@ class TestL4d2Directory:
         assert svc.get_l4d2_directory() is None
         svc.save_l4d2_directory("/games/l4d2")
         assert svc.get_l4d2_directory() == "/games/l4d2"
+
+
+class TestAtomicWrite:
+    def test_no_tmp_file_left_after_save(self, isolated_storage):
+        home, svc = isolated_storage
+        svc.set("key", "value")
+
+        storage_dir = home / "Documents" / "L4D2-VPK-Manager"
+        assert not (storage_dir / "preferences.json.tmp").exists()
+        assert json.loads((storage_dir / "preferences.json").read_text(encoding="utf-8")) == {"key": "value"}
+
+    def test_save_overwrites_existing_file(self, isolated_storage):
+        home, svc = isolated_storage
+        svc.set("key", "v1")
+        svc.set("key", "v2")
+
+        storage_dir = home / "Documents" / "L4D2-VPK-Manager"
+        assert json.loads((storage_dir / "preferences.json").read_text(encoding="utf-8"))["key"] == "v2"
+
+    def test_corrupt_file_renamed_and_reset(self, isolated_storage):
+        home, _ = isolated_storage
+        storage_dir = home / "Documents" / "L4D2-VPK-Manager"
+        (storage_dir / "preferences.json").write_text("{not valid json", encoding="utf-8")
+
+        # 原单例已加载过,重置后重新加载才会读盘
+        StorageService._instance = None
+        svc = StorageService()
+
+        assert svc.get("anything") is None
+        assert (storage_dir / "preferences.json.corrupt").exists()
+        assert (storage_dir / "preferences.json.corrupt").read_text(encoding="utf-8") == "{not valid json"

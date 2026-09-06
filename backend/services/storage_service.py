@@ -1,6 +1,7 @@
 """用户偏好设置和数据持久化的存储服务"""
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Optional
 
@@ -42,13 +43,22 @@ class StorageService:
                 return json.load(f)
         except (json.JSONDecodeError, IOError) as e:
             print(f"加载偏好设置出错: {e}")
+            # 损坏文件重命名留证，避免每次启动都在同一个坏文件上失败
+            try:
+                corrupt = self._storage_file.with_suffix('.json.corrupt')
+                os.replace(self._storage_file, corrupt)
+                print(f"已将损坏的偏好文件重命名为: {corrupt}")
+            except OSError:
+                pass
             return {}
 
     def _save_preferences(self):
-        """将偏好设置保存到存储文件"""
+        """将偏好设置保存到存储文件（先写临时文件再原子替换，避免中断损坏数据）"""
+        tmp_file = self._storage_file.with_suffix('.json.tmp')
         try:
-            with open(self._storage_file, 'w', encoding='utf-8') as f:
+            with open(tmp_file, 'w', encoding='utf-8') as f:
                 json.dump(self._preferences, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_file, self._storage_file)
         except IOError as e:
             print(f"保存偏好设置出错: {e}")
 
