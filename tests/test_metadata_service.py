@@ -1,6 +1,9 @@
 """vpk_metadata_service 的单元测试(使用 tmp_path,不触碰真实用户数据)"""
 
 import os
+import pathlib
+
+from unittest.mock import MagicMock
 
 from backend.services.vpk_metadata_service import VpkMetadataService
 
@@ -245,3 +248,46 @@ class TestErrorPaths:
 
         assert meta is not None
         assert meta.thumbnail_path is None
+
+
+class TestDefensiveBranches:
+    def test_stale_tmp_cleanup_failure_is_silent(self, tmp_path, monkeypatch):
+        cfg = tmp_path / "vpk_config"
+        cfg.mkdir()
+        stale = cfg / "old.json.tmp"
+        stale.write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(
+            pathlib.Path, "unlink",
+            lambda self, missing_ok=False: (_ for _ in ()).throw(OSError("locked")),
+        )
+        VpkMetadataService(config_dir=str(cfg))
+        assert stale.exists()  # 清理失败但初始化不崩
+
+    def test_save_failure_cleans_tmp_file(self, tmp_path):
+        # 目标 json 路径是目录 → open 失败,tmp 清理路径走 unlink(missing_ok=True)
+        svc = _make_service(tmp_path)
+        cfg = tmp_path / "vpk_config"
+        cfg.mkdir(exist_ok=True)
+        (cfg / "blocker.json").mkdir()  # 同名目录使 os.replace 失败
+
+        result = svc.save_metadata(str(tmp_path / "blocker.vpk"), {"a": 1})
+
+        assert result is False
+
+    def test_addoninfo_read_failure_returns_none(self, tmp_path, monkeypatch):
+        """addoninfo.txt 字节流读取失败时返回 None 而非崩溃"""
+        import vpk as vpk_lib
+        svc = _make_service(tmp_path)
+
+        fake_entry = MagicMock()
+        fake_entry.read.side_effect = IOError("read boom")
+        fake_vpk = MagicMock()
+        fake_vpk.__contains__ = lambda self, k: k == "addoninfo.txt"
+        fake_vpk.__getitem__ = lambda self, k: fake_entry
+        monkeypatch.setattr(vpk_lib, "VPK", lambda path: fake_vpk)
+
+        assert svc.extract_addontitle(str(tmp_path / "whatever.vpk")) is None
+
+    def test_parse_addontitle_non_string_content_returns_none(self):
+        svc = VpkMetadataService.__new__(VpkMetadataService)
+        assert svc._parse_addontitle(12345) is None  # 非 str 触发异常分支
