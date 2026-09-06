@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# 同分支新推送取消仍在跑的旧 CI,省时间省额度
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-tests:
     strategy:

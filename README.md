@@ -141,30 +141,36 @@ python main.py
 
 ### 后端 API（Python）
 
-`backend/api.py` 中的 `VpkManagerApi` 类的公共方法自动暴露为前端可调用的 API：
+`backend/api.py` 中的 `VpkManagerApi` 类（SFTP 方法在 `api_sftp.py` 的 `SftpApiMixin`）
+向 pywebview 暴露同步方法，pywebview 在独立线程中调用并返回 Promise：
 
 ```python
-class VpkManagerApi:
-    async def scan_vpk_files(self, directory: str) -> dict
-    async def export_vpks(self, file_paths: List[str], output_dir: str) -> dict
+class VpkManagerApi(SftpApiMixin):
+    _PUBLIC_METHODS = {...}  # 前端可见方法白名单（有双向一致性守卫测试）
+    def scan_vpk_files(self, directory: str) -> dict
+    def export_vpks(self, file_paths: List[str], output_dir: str, better_naming: bool = False) -> dict
     def delete_vpk_file(self, file_path: str, disable: bool = True) -> dict
-    # ... 更多方法
+    # ... 共 22 个公开方法
 ```
 
-### 前端调用（JavaScript）
+### 前端调用（TypeScript）
+
+统一经 `composables/useApi.ts` 的 `getApi()`（带类型定义，见 `types/api.ts`）调用：
 
 ```typescript
+import { getApi } from '@/composables/useApi'
+
 // 扫描 VPK 文件
-const result = await window.api.scan_vpk_files('/path/to/l4d2')
+const result = await getApi().scan_vpk_files('/path/to/l4d2')
 
 // 导出文件
-const exportResult = await window.api.export_vpks(
+const exportResult = await getApi().export_vpks(
     ['/path/to/vpk1.vpk', '/path/to/vpk2.vpk'],
     '/home/user/Downloads'
 )
 
 // 删除文件
-const deleteResult = await window.api.delete_vpk_file(
+const deleteResult = await getApi().delete_vpk_file(
     '/path/to/vpk.vpk',
     true  // 禁用而不是删除
 )
