@@ -1,4 +1,4 @@
-# 使用 Nuitka 将 Python 应用打包为单文件 .exe
+﻿# 使用 Nuitka 将 Python 应用打包为单文件 .exe
 # 使用方法: .\scripts\package-nuitka.ps1
 
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -31,15 +31,35 @@ if ($env:CONDA_DEFAULT_ENV -ne $targetEnv) {
     }
     
     if ($env:CONDA_DEFAULT_ENV -ne $targetEnv) {
-        Write-Host "无法切换到环境 $targetEnv，请检查该环境是否存在。" -ForegroundColor Red
+        # 不直接失败:下方会回退为直接定位环境内 python.exe(无头/自动化场景)
+        Write-Host "无法在当前会话激活 $targetEnv，将尝试直接定位环境 python.exe..." -ForegroundColor Yellow
+    } else {
+        Write-Host "环境已成功激活!" -ForegroundColor Green
+    }
+}
+
+# 确定要使用的 python:优先已激活环境;否则直接定位环境内的 python.exe(无头/自动化场景)
+$pythonExe = "python"
+if ($env:CONDA_DEFAULT_ENV -ne $targetEnv) {
+    $condaBase = (& conda info --base 2>$null)
+    if ($LASTEXITCODE -eq 0 -and $condaBase) {
+        $envPython = Join-Path $condaBase "envs\$targetEnv\python.exe"
+        if (Test-Path $envPython) {
+            $pythonExe = $envPython
+            Write-Host "未激活 Conda 环境,直接使用: $pythonExe" -ForegroundColor Yellow
+        } else {
+            Write-Host "错误: 找不到环境 $targetEnv 的 python.exe" -ForegroundColor Red
+            exit 1
+        }
+    } else {
+        Write-Host "错误: 找不到 conda,无法定位环境 $targetEnv" -ForegroundColor Red
         exit 1
     }
-    Write-Host "环境已成功激活!" -ForegroundColor Green
 }
 
 # 检查是否安装了 Nuitka
 Write-Host "正在检查环境 $targetEnv 中的 Nuitka..." -ForegroundColor Cyan
-python -c "import nuitka" 2>$null
+& $pythonExe -c "import nuitka" 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "错误: 当前环境中未找到 Nuitka!" -ForegroundColor Red
     Write-Host "请确保已安装所有依赖:" -ForegroundColor Yellow
@@ -84,7 +104,7 @@ Push-Location $projectRoot
 #   - force: 强制显示控制台 (调试打包问题时非常有用)
 # --output-filename: 指定生成的 EXE 文件名
 # --windows-icon-from-ico: 指定图标文件
-python -m nuitka `
+& $pythonExe -m nuitka `
     --onefile `
     --windows-console-mode=disable `
     --include-data-dir=frontend/dist=frontend/dist `
