@@ -48,3 +48,21 @@ def test_no_untranslated_placeholder_mismatch():
         en_ph = set(re.findall(r"\{(\w+)\}", str(en[key])))
         zh_ph = set(re.findall(r"\{(\w+)\}", str(zh[key])))
         assert en_ph == zh_ph, f"键 {key} 的占位符不一致: en={en_ph} zh={zh_ph}"
+
+
+def test_en_zh_placeholder_sets_match():
+    """en/zh 同键的插值占位符({count} 等)必须一致,避免某一语言运行时缺参"""
+    import re
+
+    en = _load("en.json")
+    zh = _load("zh.json")
+    placeholder = re.compile(r"\{(\w+)\}")
+
+    mismatched = {}
+    for key in en:
+        en_params = set(placeholder.findall(en[key]))
+        zh_params = set(placeholder.findall(zh.get(key, "")))
+        if en_params != zh_params:
+            mismatched[key] = (sorted(en_params), sorted(zh_params))
+
+    assert mismatched == {}, f"占位符不一致(en, zh): {mismatched}"

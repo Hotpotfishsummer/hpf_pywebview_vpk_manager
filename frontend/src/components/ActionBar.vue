@@ -131,7 +131,7 @@ async function handleLocalize() {
   try {
     await store.localizeVpks()
   } catch (error) {
-    store.showNotification(error instanceof Error ? error.message : 'Localization failed', 'error')
+    store.showNotification(error instanceof Error ? error.message : $t('localizeFailed'), 'error')
   }
 }
 
