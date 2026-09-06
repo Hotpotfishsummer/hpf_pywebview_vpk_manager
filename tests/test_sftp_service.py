@@ -95,3 +95,50 @@ class TestDeleteWithImages:
         sftp.remove.side_effect = IOError("perm")
         assert svc.delete_file_with_images({}, "/a/x.vpk") is False
         assert sftp.remove.call_count == 1
+
+
+class TestConnection:
+    def _patch_paramiko(self, monkeypatch):
+        ssh = MagicMock()
+        monkeypatch.setattr("backend.services.sftp_service.paramiko.SSHClient", MagicMock(return_value=ssh))
+        return ssh
+
+    def test_connect_uses_default_timeout(self, monkeypatch):
+        svc = SftpService()
+        ssh = self._patch_paramiko(monkeypatch)
+
+        svc._get_client({"address": "host:22", "username": "u", "password": "p"})
+
+        args, kwargs = ssh.connect.call_args
+        assert args[:4] == ("host", 22, "u", "p")
+        assert kwargs["timeout"] == 10.0
+
+    def test_connect_uses_custom_timeout(self, monkeypatch):
+        svc = SftpService(connect_timeout=3.5)
+        ssh = self._patch_paramiko(monkeypatch)
+
+        svc._get_client({"address": "host", "username": "u", "password": "p"})
+
+        args, kwargs = ssh.connect.call_args
+        assert args[0] == "host"
+        assert args[1] == 22  # 无端口时默认 22
+        assert kwargs["timeout"] == 3.5
+
+    def test_connect_failure_resets_state_and_raises(self, monkeypatch):
+        svc = SftpService()
+        ssh = self._patch_paramiko(monkeypatch)
+        ssh.connect.side_effect = IOError("unreachable")
+
+        with pytest.raises(IOError):
+            svc._get_client({"address": "host:2222", "username": "u", "password": "p"})
+
+        assert svc._ssh_client is None
+        assert svc._sftp is None
+
+    def test_missing_credentials_raises_before_connect(self, monkeypatch):
+        svc = SftpService()
+        ssh = self._patch_paramiko(monkeypatch)
+
+        with pytest.raises(ValueError):
+            svc._get_client({"address": "host"})
+        ssh.connect.assert_not_called()

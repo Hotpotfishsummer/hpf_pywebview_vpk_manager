@@ -11,11 +11,13 @@ logger = logging.getLogger(__name__)
 
 class SftpService:
     """处理与远端服务器的 SFTP 通信和文件管理"""
-    
-    def __init__(self):
+
+    def __init__(self, connect_timeout: float = 10.0):
         self._ssh_client = None
         self._sftp = None
         self._executor = ThreadPoolExecutor(max_workers=4)
+        # 连接超时秒数;构造时可覆盖(慢速网络/代理场景)
+        self.connect_timeout = connect_timeout
 
     def _get_client(self, config: Dict[str, str]) -> paramiko.SFTPClient:
         """获取或创建 SFTP 客户端"""
@@ -42,7 +44,7 @@ class SftpService:
         try:
             self._ssh_client = paramiko.SSHClient()
             self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self._ssh_client.connect(host, port, username, password, timeout=10)
+            self._ssh_client.connect(host, port, username, password, timeout=self.connect_timeout)
             self._sftp = self._ssh_client.open_sftp()
             return self._sftp
         except Exception as e:
