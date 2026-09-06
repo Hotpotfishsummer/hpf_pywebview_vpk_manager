@@ -183,3 +183,19 @@ class Test7zNestedFlatten:
         assert result["success"] is False
         assert result["imported_count"] == 0
         assert any("py7zr" in e for e in result["errors"])
+
+
+class TestMissingDependencyErrors:
+    def test_tar_zst_without_zstd_reports_error(self, tmp_path, monkeypatch):
+        """环境缺 zstandard 时 .tar.zst 导入应报错而非崩溃"""
+        import backend.services.vpk_import_service as mod
+        archive = tmp_path / "pack.tar.zst"
+        archive.write_bytes(b"fake")
+        addons = tmp_path / "addons"
+        addons.mkdir()
+        monkeypatch.setattr(mod, "HAS_ZSTD", False)
+
+        result = VpkImportService.import_compressed_files([str(archive)], str(addons))
+
+        assert result["success"] is False
+        assert any("zstandard" in e for e in result["errors"])

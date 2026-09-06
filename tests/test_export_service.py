@@ -1,5 +1,6 @@
 """vpk_export_service 纯函数的单元测试"""
 
+import pytest
 
 from backend.services.vpk_export_service import VpkExportService
 
@@ -49,3 +50,13 @@ class TestGenerateArchiveName:
             ["x.vpk"], titles=['a<b>c:d"e/f\\g|h?i*j']
         )
         assert not any(c in name for c in '<>:"/\\|?*')
+
+
+class TestMissingDependency:
+    def test_export_without_zstd_raises_clear_error(self, tmp_path, monkeypatch):
+        """环境缺 zstandard 时导出应抛清晰错误"""
+        import backend.services.vpk_export_service as mod
+        monkeypatch.setattr(mod, "HAS_ZSTD", False)
+
+        with pytest.raises(Exception, match="zstandard"):
+            VpkExportService.export_vpks(["/a.vpk"], str(tmp_path))
