@@ -21,6 +21,7 @@
 - **国际化：** vue-i18n JSON 翻译文件
 - **打包：** Nuitka 生成单一 .exe（Windows）
 - **开发：** Hot reload + 并行前后端调试
+- **测试：** 后端 pytest(240+ 用例,含覆盖率) + 前端 vitest 组件/单元测试 + GitHub Actions CI
 
 ## 快速开始
 
