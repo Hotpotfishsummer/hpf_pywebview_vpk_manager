@@ -80,20 +80,24 @@ python main.py
 ├── requirements.txt               # Python 依赖
 ├── pytest.ini                     # pytest 配置
 │
-├── tests/                         # 后端单元测试（pytest）
+├── tests/                         # 后端单元测试（pytest，170+ 用例）
 │   ├── conftest.py
 │   ├── test_models.py
 │   ├── test_naming.py
+│   ├── test_dependency_consistency.py   # requirements.txt 与 environment.yml 一致性守卫
 │   ├── test_metadata_service.py
 │   ├── test_export_service.py
 │   ├── test_import_service.py
-│   └── test_vpk_ops.py
+│   ├── test_vpk_ops.py
+│   └── ...（service 级与 i18n 键守卫等测试）
 │
 ├── frontend/                      # Vue3 前端应用
 │   ├── src/
-│   │   ├── components/            # Vue 组件（DirectorySelector / VpkFilesList / VpkFileItem / SftpBrowser / SettingsModal）
-│   │   ├── stores/                # Pinia 状态管理
-│   │   ├── composables/           # Vue 组件钩子
+│   │   ├── components/            # Vue 组件（AppHeader / StatusBanner / ActionBar / DirectorySelector /
+│   │   │                          #   VpkFilesList / VpkFileItem / SftpBrowser / SettingsModal）
+│   │   ├── stores/                # Pinia 状态管理（vpk-manager.ts）
+│   │   ├── composables/           # useApi（PyWebView API 封装）/ useVpkSection
+│   │   ├── types/                 # API 返回结果类型定义
 │   │   ├── i18n/                  # 国际化配置和翻译文件
 │   │   ├── App.vue                # 根组件
 │   │   └── main.ts                # 前端入口
@@ -102,7 +106,8 @@ python main.py
 │   └── vite.config.js
 │
 ├── backend/                       # Python 后端
-│   ├── api.py                     # PyWebView API 接口
+│   ├── api.py                     # PyWebView API 接口（核心方法）
+│   ├── api_sftp.py                # SFTP 相关 API 方法（SftpApiMixin）
 │   ├── models.py                  # 数据模型
 │   ├── naming.py                  # 共享的 VPK 命名/清洗逻辑
 │   └── services/
