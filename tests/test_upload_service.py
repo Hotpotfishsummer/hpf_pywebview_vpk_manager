@@ -79,3 +79,39 @@ class TestUpload:
         result = svc.upload([vpk_path], "/remote/addons", {})
 
         assert result["uploaded_count"] == 0
+
+
+class TestBetterNamingEdgeCases:
+    def test_better_naming_without_addontitle_falls_back(self, tmp_path, monkeypatch):
+        svc, sftp = _make_service(tmp_path)
+        vpk_path = _make_files(tmp_path, name="plain.vpk", images=())
+        monkeypatch.setattr(svc.metadata_service, "get_addontitle", lambda p: None)
+
+        svc.upload([vpk_path], "/remote/addons", {}, better_naming=True)
+
+        targets = [c.args[2] for c in sftp.upload_file.call_args_list]
+        assert "/remote/addons/plain.vpk" in targets
+
+    def test_better_naming_disabled_file_no_double_suffix(self, tmp_path, monkeypatch):
+        svc, sftp = _make_service(tmp_path)
+        vpk_path = _make_files(tmp_path, name="off.vpk.disabled", images=())
+        # 真实 metadata:无缓存无 VPK → addontitle 为 None → 走 fallback
+        monkeypatch.setattr(svc.metadata_service, "get_addontitle", lambda p: None)
+
+        svc.upload([vpk_path], "/remote/addons", {}, better_naming=True)
+
+        targets = [c.args[2] for c in sftp.upload_file.call_args_list]
+        assert "/remote/addons/off.vpk.disabled" in targets
+        assert not any("off.vpk.vpk" in t for t in targets)
+
+    def test_better_naming_disabled_file_with_title(self, tmp_path, monkeypatch):
+        svc, sftp = _make_service(tmp_path)
+        vpk_path = _make_files(tmp_path, name="12345678.vpk.disabled", images=())
+        monkeypatch.setattr(
+            svc.metadata_service, "get_addontitle", lambda p: "My Mod"
+        )
+
+        svc.upload([vpk_path], "/remote/addons", {}, better_naming=True)
+
+        targets = [c.args[2] for c in sftp.upload_file.call_args_list]
+        assert "/remote/addons/My_Mod-12345678.vpk.disabled" in targets
