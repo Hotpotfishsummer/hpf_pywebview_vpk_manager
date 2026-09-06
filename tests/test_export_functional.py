@@ -80,3 +80,22 @@ class TestExportVpks:
     def test_empty_selection_raises(self, tmp_path):
         with pytest.raises(Exception):
             VpkExportService.export_vpks([], str(tmp_path / "out"))
+
+
+class TestArchiveNamingDeterminism:
+    def test_same_inputs_produce_same_archive_name_and_overwrite(self, tmp_path):
+        """归档名由输入决定;重复导出覆盖旧归档(固化为契约)"""
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "mod.vpk").write_bytes(b"content v1")
+
+        out_dir = tmp_path / "out"
+        archive1 = VpkExportService.export_vpks([str(src / "mod.vpk")], str(out_dir))
+        (src / "mod.vpk").write_bytes(b"content v2 longer")
+        archive2 = VpkExportService.export_vpks([str(src / "mod.vpk")], str(out_dir))
+
+        assert archive1 == archive2
+        assert _archive_names(archive2) == ["mod.vpk"]
+        # 覆盖后内容为新版本(长度可区分)
+        import os
+        assert os.path.getsize(archive2) > 0

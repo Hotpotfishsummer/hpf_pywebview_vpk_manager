@@ -45,6 +45,11 @@ if (-not (Test-Path "$frontendDir/node_modules")) {
     Write-Host "正在安装前端依赖..." -ForegroundColor Yellow
     Push-Location $frontendDir
     npm install
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "前端依赖安装失败!" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
     Pop-Location
     Write-Host ""
 }

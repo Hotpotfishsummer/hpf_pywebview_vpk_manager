@@ -15,7 +15,7 @@
           v-if="vpk.thumbnail_path" 
           :src="vpk.thumbnail_path" 
           class="vpk-thumbnail" 
-          alt="thumbnail"
+          :alt="vpk.display_name"
         />
         <div v-else class="vpk-thumbnail-placeholder">
           <span>VPK</span>
