@@ -111,7 +111,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     notification.message = ''
   }
 
-  async function scanVpks(directory: string) {
+    /** 扫描本地与创意工坊 VPK 列表(经后端 scan_vpk_files) */
+async function scanVpks(directory: string) {
     if (!directory) return
 
     isScanning.value = true
@@ -137,7 +138,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function importVpks() {
+    /** 弹窗选择压缩包并导入到本地 addons(经后端 import_compressed_vpks) */
+async function importVpks() {
     if (!currentDirectory.value) {
       showNotification($t('needDirectoryFirst'), 'error')
       return
@@ -166,7 +168,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function localizeVpks() {
+    /** 将选中的创意工坊 VPK 本地化到 addons(可选 better_naming 重命名) */
+async function localizeVpks() {
     const paths = Array.from(selectedWorkshopVpks)
     if (paths.length === 0) return
 
@@ -206,7 +209,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function initialize() {
+    /** 应用启动初始化:恢复上次目录并立即扫描 */
+async function initialize() {
     console.log('Initializing VpkManager store...')
     try {
       // 加载上次目录
@@ -228,7 +232,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function saveSftpSettings() {
+    /** 保存 SFTP 设置到偏好文件 */
+async function saveSftpSettings() {
     try {
       const result = await getApi().save_sftp_settings({ ...sftpSettings })
       if (!result.success) {
@@ -259,7 +264,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     selectedRemoteVpks.clear()
   }
 
-  async function scanRemoteVpks() {
+    /** 列出远端 addons 目录的 VPK 文件 */
+async function scanRemoteVpks() {
     isRemoteScanning.value = true
     try {
       const result = await getApi().list_remote_vpks()
@@ -276,7 +282,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function deleteRemoteVpk(path: string) {
+    /** 删除单个远端 VPK(含关联图片) */
+async function deleteRemoteVpk(path: string) {
     try {
       const result = await getApi().delete_remote_vpk(path)
       if (result.success) {
@@ -290,7 +297,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function deleteMultipleRemoteVpks() {
+    /** 批量删除选中的远端 VPK(含关联图片) */
+async function deleteMultipleRemoteVpks() {
     const paths = Array.from(selectedRemoteVpks)
     if (paths.length === 0) return
     
@@ -312,7 +320,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function disableRemoteVpks() {
+    /** 远端禁用:重命名为 .disabled(含关联图片) */
+async function disableRemoteVpks() {
     const paths = Array.from(selectedRemoteVpks).filter(p => !p.endsWith('.disabled'))
     if (paths.length === 0) return
     
@@ -332,7 +341,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function enableRemoteVpks() {
+    /** 远端启用:移除 .disabled 后缀(含关联图片) */
+async function enableRemoteVpks() {
     const paths = Array.from(selectedRemoteVpks).filter(p => p.endsWith('.disabled'))
     if (paths.length === 0) return
     
@@ -352,7 +362,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function downloadRemoteVpks() {
+    /** 下载选中的远端 VPK 及关联图片到本地 addons */
+async function downloadRemoteVpks() {
     const paths = Array.from(selectedRemoteVpks)
     if (paths.length === 0) return
     
@@ -376,7 +387,8 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  async function uploadLocalVpks() {
+    /** 上传选中的本地 VPK 及关联图片到远端 addons */
+async function uploadLocalVpks() {
     const paths = getSelectedVpkPaths()
     if (paths.length === 0) return
     
