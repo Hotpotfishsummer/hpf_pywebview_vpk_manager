@@ -201,3 +201,39 @@ class TestAddressParsing:
         svc = SftpService()
         with pytest.raises(ValueError, match="端口超出范围"):
             svc._get_client({"address": "host:99999", "username": "u", "password": "p"})
+
+class TestKeepalive:
+    def _patch_paramiko(self, monkeypatch):
+        ssh = MagicMock()
+        transport = MagicMock()
+        ssh.get_transport.return_value = transport
+        monkeypatch.setattr("backend.services.sftp_service.paramiko.SSHClient", MagicMock(return_value=ssh))
+        return ssh, transport
+
+    def test_keepalive_called_with_default_interval(self, monkeypatch):
+        svc = SftpService()
+        ssh, transport = self._patch_paramiko(monkeypatch)
+
+        svc._get_client({"address": "host:22", "username": "u", "password": "p"})
+
+        transport.set_keepalive.assert_called_once_with(30)
+
+    def test_keepalive_called_with_custom_interval(self, monkeypatch):
+        svc = SftpService()
+        svc.keepalive_interval = 15
+        ssh, transport = self._patch_paramiko(monkeypatch)
+
+        svc._get_client({"address": "host:22", "username": "u", "password": "p"})
+
+        transport.set_keepalive.assert_called_once_with(15)
+
+    def test_keepalive_not_called_on_connection_failure(self, monkeypatch):
+        svc = SftpService()
+        ssh = MagicMock()
+        ssh.connect.side_effect = IOError("unreachable")
+        monkeypatch.setattr("backend.services.sftp_service.paramiko.SSHClient", MagicMock(return_value=ssh))
+
+        with pytest.raises(IOError):
+            svc._get_client({"address": "host:22", "username": "u", "password": "p"})
+
+        ssh.get_transport.assert_not_called()

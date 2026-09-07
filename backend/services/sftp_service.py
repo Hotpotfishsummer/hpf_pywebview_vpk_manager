@@ -17,6 +17,8 @@ class SftpService:
         self._executor = ThreadPoolExecutor(max_workers=4)
         # 连接超时秒数;构造时可覆盖(慢速网络/代理场景)
         self.connect_timeout = connect_timeout
+        # SSH keepalive 间隔(秒),0 表示禁用
+        self.keepalive_interval = 30
 
     def _get_client(self, config: Dict[str, str]) -> paramiko.SFTPClient:
         """获取或创建 SFTP 客户端"""
@@ -49,6 +51,10 @@ class SftpService:
             self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self._ssh_client.connect(host, port, username, password, timeout=self.connect_timeout)
             self._sftp = self._ssh_client.open_sftp()
+            # 保持连接活跃,防止 NAT/防火墙因长时间空闲而断开
+            transport = self._ssh_client.get_transport()
+            if transport:
+                transport.set_keepalive(self.keepalive_interval)
             return self._sftp
         except Exception as e:
             logger.error(f"连接 SFTP 失败: {e}")
