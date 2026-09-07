@@ -17,7 +17,7 @@ interface PyWebViewApi {
   browse_directory(): Promise<string | null>
   get_downloads_directory(): Promise<string>
   scan_vpk_files(directory: string): Promise<ScanResult>
-  export_vpks(file_paths: string[], output_dir: string, better_naming?: boolean): Promise<ExportResult>
+  export_vpks(file_paths: string[], output_dir: string, better_naming?: boolean, overwrite?: boolean): Promise<ExportResult>
   import_compressed_vpks(): Promise<ImportResult>
   localize_workshop_vpks(file_paths: string[], better_naming?: boolean): Promise<LocalizeResult>
   open_directory(path: string): Promise<boolean>

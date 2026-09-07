@@ -33,6 +33,8 @@ export interface LocalizeResult extends ApiResult {
 /** export_vpks */
 export interface ExportResult extends ApiResult {
   file_path?: string
+  /** 目标归档已存在且未指定 overwrite 时为 true,由前端决定是否覆盖重试 */
+  exists?: boolean
 }
 
 /** 远程 SFTP 文件条目(sftp_service.list_vpk_files) */

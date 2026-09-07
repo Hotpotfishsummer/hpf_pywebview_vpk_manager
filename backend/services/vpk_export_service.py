@@ -26,7 +26,7 @@ class VpkExportService:
     """VPK 文件导出和删除的服务类"""
 
     @staticmethod
-    def export_vpks(vpk_file_paths: List[str], output_dir: str, titles: Optional[List[str]] = None, better_naming: bool = False) -> str:
+    def export_vpks(vpk_file_paths: List[str], output_dir: str, titles: Optional[List[str]] = None, better_naming: bool = False, overwrite: bool = False) -> str:
         """
         将选定的 VPK 文件导出到 zstandard 压缩的 tar 归档。
 
@@ -35,12 +35,14 @@ class VpkExportService:
             output_dir: 输出目录（通常是下载文件夹）
             titles: VPK 文件的显示名称或标题列表（可选）
             better_naming: 是否在压缩包内使用 addontitle 命名文件
+            overwrite: 是否覆盖已存在的目标文件
 
         返回:
             Path to the created archive file
 
         Raises:
             Exception: If export fails
+            FileExistsError: If target archive exists and overwrite is False
         """
         start_time = time.time()
 
@@ -58,6 +60,9 @@ class VpkExportService:
             # Generate archive name
             archive_name = VpkExportService._generate_archive_name(vpk_file_paths, titles)
             archive_path = output_path / f"{archive_name}.tar.zst"
+
+            if archive_path.exists() and not overwrite:
+                raise FileExistsError(f"目标文件已存在: {archive_path}")
 
             logger.info(f"export_vpks: creating archive {archive_path}")
 

@@ -72,16 +72,17 @@ class VpkOpsApiMixin:
         finally:
             self._is_scanning = False
 
-    def export_vpks(self, file_paths: List[str], output_dir: str, better_naming: bool = False) -> dict:
+    def export_vpks(self, file_paths: List[str], output_dir: str, better_naming: bool = False, overwrite: bool = False) -> dict:
         """将选定的 VPK 文件导出到压缩归档。
 
         参数:
             file_paths: 要导出的 VPK 文件路径列表
             output_dir: 保存导出归档的目录
             better_naming: 是否在压缩包内重命名文件
+            overwrite: 是否覆盖已存在的目标文件
 
         返回:
-            包含成功状态和导出详情的字典
+            包含成功状态和导出详情的字典;目标已存在时返回 exists=True
         """
         if self._is_exporting:
             return {
@@ -104,7 +105,8 @@ class VpkOpsApiMixin:
                 file_paths,
                 output_dir,
                 titles=titles,
-                better_naming=better_naming
+                better_naming=better_naming,
+                overwrite=overwrite,
             )
 
             return {
@@ -113,6 +115,13 @@ class VpkOpsApiMixin:
                 "file_path": result,
             }
 
+        except FileExistsError as e:
+            logger.warning(f"导出目标文件已存在: {e}")
+            return {
+                "success": False,
+                "exists": True,
+                "error": str(e),
+            }
         except Exception as e:
             logger.error(f"导出 VPK 文件出错: {e}")
             return {

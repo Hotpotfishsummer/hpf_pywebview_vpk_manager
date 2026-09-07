@@ -6,6 +6,8 @@
 
 import io
 import tarfile
+import os
+from pathlib import Path
 
 import pytest
 
@@ -23,6 +25,17 @@ def _archive_names(archive_path: str) -> list:
         raw = zstd.ZstdDecompressor().stream_reader(f).read()
     with tarfile.open(fileobj=io.BytesIO(raw), mode="r|") as tar:
         return sorted(m.name for m in tar if m.isfile())
+
+
+def _archive_file_content(archive_path: str, filename: str) -> bytes:
+    """从 zstd 压缩归档中提取指定文件内容"""
+    with open(archive_path, "rb") as f:
+        raw = zstd.ZstdDecompressor().stream_reader(f).read()
+    with tarfile.open(fileobj=io.BytesIO(raw), mode="r|") as tar:
+        for member in tar:
+            if member.name == filename:
+                return tar.extractfile(member).read()
+    raise ValueError(f"{filename} not found in archive")
 
 
 class TestExportVpks:
@@ -84,7 +97,7 @@ class TestExportVpks:
 
 class TestArchiveNamingDeterminism:
     def test_same_inputs_produce_same_archive_name_and_overwrite(self, tmp_path):
-        """归档名由输入决定;重复导出覆盖旧归档(固化为契约)"""
+        """归档名由输入决定;重复导出默认拒绝,overwrite=True 时覆盖旧归档(契约)"""
         src = tmp_path / "src"
         src.mkdir()
         (src / "mod.vpk").write_bytes(b"content v1")
@@ -92,13 +105,24 @@ class TestArchiveNamingDeterminism:
         out_dir = tmp_path / "out"
         archive1 = VpkExportService.export_vpks([str(src / "mod.vpk")], str(out_dir))
         (src / "mod.vpk").write_bytes(b"content v2 longer")
-        archive2 = VpkExportService.export_vpks([str(src / "mod.vpk")], str(out_dir))
+
+        # 默认: 目标已存在时抛 FileExistsError,由上层(前端确认弹窗)决定是否覆盖
+        with pytest.raises(FileExistsError, match="目标文件已存在"):
+            VpkExportService.export_vpks([str(src / "mod.vpk")], str(out_dir))
+        # 拒绝覆盖时旧归档保持原内容
+        assert os.path.getsize(archive1) > 0
+        assert b"content v1" in _archive_file_content(archive1, "mod.vpk")
+
+        # overwrite=True: 恢复旧契约,覆盖并写入新内容
+        archive2 = VpkExportService.export_vpks(
+            [str(src / "mod.vpk")], str(out_dir), overwrite=True
+        )
 
         assert archive1 == archive2
         assert _archive_names(archive2) == ["mod.vpk"]
-        # 覆盖后内容为新版本(长度可区分)
-        import os
+        # 覆盖后内容为新版本
         assert os.path.getsize(archive2) > 0
+        assert b"content v2 longer" in _archive_file_content(archive2, "mod.vpk")
 
 
 class TestGenerateArchiveNameEdgeCases:

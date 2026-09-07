@@ -26,6 +26,7 @@
   "localizeTooltip": "将选中的创意工坊文件复制到 addons 目录",
   "selectionInfo": "已选择 {count} 项",
   "selectedFilesWithSize": "已选 {count} 个 · {size}",
+  "confirmOverwriteExport": "导出文件已存在，是否覆盖？",
   "localizeSuccess": "已成功本地化 {count} 个文件",
   "deleteSuccess": "文件已成功删除",
   "exportError": "导出失败",

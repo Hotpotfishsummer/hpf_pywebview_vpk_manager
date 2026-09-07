@@ -121,7 +121,13 @@ async function handleExport() {
       outputDir = '.'
     }
 
-    await store.exportVpks(outputDir)
+    const result = await store.exportVpks(outputDir)
+    if (result && result.exists) {
+      // 目标归档已存在，询问是否覆盖
+      if (confirm($t('confirmOverwriteExport'))) {
+        await store.exportVpks(outputDir, true)
+      }
+    }
   } catch (error) {
     store.showNotification(error instanceof Error ? error.message : $t('exportError'), 'error')
   }

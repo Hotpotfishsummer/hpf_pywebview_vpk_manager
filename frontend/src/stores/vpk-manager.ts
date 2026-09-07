@@ -423,7 +423,7 @@ async function uploadLocalVpks() {
     await callApi(api => api.open_directory(path), false)
   }
 
-  async function exportVpks(outputDir: string) {
+  async function exportVpks(outputDir: string, overwrite = false) {
     const paths = getSelectedVpkPaths()
     if (paths.length === 0) {
       showNotification($t('selectFiles'), 'error')
@@ -435,9 +435,10 @@ async function uploadLocalVpks() {
 
     try {
       const result = await getApi().export_vpks(
-        paths, 
-        outputDir, 
-        useBetterNaming.value
+        paths,
+        outputDir,
+        useBetterNaming.value,
+        overwrite
       )
 
       if (result.success) {
@@ -445,6 +446,8 @@ async function uploadLocalVpks() {
         selectedLocalVpks.clear()
         selectedWorkshopVpks.clear()
         showNotification($t('exportDone'), 'success')
+      } else if (result.exists) {
+        // 文件已存在，由调用方决定如何处理（前端不自动弹出通知）
       } else {
         showNotification(result.error || $t('exportError'), 'error')
       }

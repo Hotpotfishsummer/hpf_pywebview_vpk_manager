@@ -26,6 +26,7 @@
   "localizeTooltip": "Copy selected workshop files to addons directory",
   "selectionInfo": "Selected {count} items",
   "selectedFilesWithSize": "Selected {count} · {size}",
+  "confirmOverwriteExport": "The export file already exists. Overwrite?",
   "localizeSuccess": "Successfully localized {count} files",
   "deleteSuccess": "Files deleted successfully",
   "exportError": "Export failed",
