@@ -37,6 +37,25 @@
           {{ $t("openWorkshopPage") }}
         </button>
       </div>
+      <div class="item-actions">
+        <button
+          v-if="vpk.is_disabled"
+          class="quick-action-btn enable-btn"
+          :title="$t('enable')"
+          @click.stop="$emit('enable', vpk.path)"
+        >✔️</button>
+        <button
+          v-else
+          class="quick-action-btn disable-btn"
+          :title="$t('disable')"
+          @click.stop="$emit('disable', vpk.path)"
+        >🚫</button>
+        <button
+          class="quick-action-btn delete-btn"
+          :title="$t('hardDelete')"
+          @click.stop="handleDelete"
+        >🗑️</button>
+      </div>
     </div>
   </div>
 </template>
@@ -45,15 +64,27 @@
 import { computed } from 'vue'
 import { VpkFile } from '@/stores/vpk-manager'
 import { callApi } from '@/composables/useApi'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   vpk: VpkFile
   isSelected: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   toggle: []
+  enable: [path: string]
+  disable: [path: string]
+  delete: [path: string]
 }>()
+
+const { t: $t } = useI18n()
+
+function handleDelete() {
+  if (confirm($t('confirmHardDelete'))) {
+    emit('delete', props.vpk.path)
+  }
+}
 
 const workshopId = computed(() => {
   // 匹配连续 8 位或以上的数字
@@ -200,6 +231,49 @@ function formatSize(bytes: number): string {
 .vpk-file-item.is-disabled {
   opacity: 0.5;
 }
+
+.item-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.vpk-file-item:hover .item-actions {
+  opacity: 1;
+}
+
+.quick-action-btn {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.quick-action-btn:hover {
+  background: rgba(148, 163, 184, 0.25);
+  transform: translateY(-1px);
+}
+
+.quick-action-btn.enable-btn:hover {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.quick-action-btn.disable-btn:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.quick-action-btn.delete-btn:hover {
+  border-color: rgba(239, 68, 68, 0.4);
 
 .vpk-file-item.is-disabled .file-name {
   text-decoration: line-through;

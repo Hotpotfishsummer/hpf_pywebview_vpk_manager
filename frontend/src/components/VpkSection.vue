@@ -50,6 +50,9 @@
               :vpk="vpk"
               :is-selected="selectedSet.has(vpk.path)"
               @toggle="$emit('toggle-select', vpk.path)"
+              @enable="$emit('enable', $event)"
+              @disable="$emit('disable', $event)"
+              @delete="$emit('delete', $event)"
             />
           </div>
         </div>
@@ -79,6 +82,9 @@ const emit = defineEmits<{
   (e: 'select-all', paths: string[]): void
   (e: 'deselect-all', paths: string[]): void
   (e: 'open-folder'): void
+  (e: 'enable', path: string): void
+  (e: 'disable', path: string): void
+  (e: 'delete', path: string): void
 }>()
 
 const expanded = ref(true)

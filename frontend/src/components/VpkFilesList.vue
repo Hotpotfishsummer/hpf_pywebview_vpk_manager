@@ -36,6 +36,9 @@
       @toggle-select="store.toggleLocalVpkSelection"
       @select-all="store.selectAllLocal"
       @deselect-all="store.deselectAllLocal"
+      @enable="(path: string) => store.deleteVpks(true, [path])"
+      @disable="(path: string) => store.deleteVpks(true, [path])"
+      @delete="(path: string) => store.deleteVpks(false, [path])"
       @open-folder="store.openAddonsFolder"
     />
 
@@ -51,6 +54,9 @@
       @toggle-select="store.toggleWorkshopVpkSelection"
       @select-all="store.selectAllWorkshop"
       @deselect-all="store.deselectAllWorkshop"
+      @enable="(path: string) => store.deleteVpks(true, [path])"
+      @disable="(path: string) => store.deleteVpks(true, [path])"
+      @delete="(path: string) => store.deleteVpks(false, [path])"
       @open-folder="store.openWorkshopFolder"
     />
   </div>
