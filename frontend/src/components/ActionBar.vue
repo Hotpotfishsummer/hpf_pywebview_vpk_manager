@@ -78,11 +78,12 @@
       </div>
 
       <!-- Export progress indicator -->
-      <div v-if="store.isExporting" class="export-progress">
+      <!-- Unified busy progress indicator -->
+      <div v-if="isAnyBusy" class="export-progress">
         <div class="progress-bar">
           <div class="progress-fill"></div>
         </div>
-        <span class="progress-text">{{ $t("packingFiles") }}</span>
+        <span class="progress-text">{{ busyText }}</span>
       </div>
     </div>
   </div>
@@ -102,6 +103,21 @@ const selectionCount = computed(() => {
 
 const selectionCountText = computed(() => {
   return $t('selectionInfo', { count: selectionCount.value })
+})
+
+const isAnyBusy = computed(() => {
+  return store.isExporting || store.isUploading || store.isDownloading ||
+         store.isImporting || store.isLocalizing || store.isDeleting
+})
+
+const busyText = computed(() => {
+  if (store.isExporting) return $t('packingFiles')
+  if (store.isUploading) return $t('uploadingLocal')
+  if (store.isDownloading) return $t('downloadingRemote')
+  if (store.isImporting) return $t('importing')
+  if (store.isLocalizing) return $t('converting')
+  if (store.isDeleting) return $t('processing')
+  return ''
 })
 
 async function handleExport() {
