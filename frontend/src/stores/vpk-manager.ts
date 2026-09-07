@@ -50,6 +50,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   const isUploading = ref(false)
   const useBetterNaming = ref(true) // 默认开启
   const useAutoOpenExport = ref(true) // 默认开启
+  const exportProgress = reactive({ stage: '', done: 0, total: 0 })
 
   // SFTP 设置
   const sftpSettings = reactive({
@@ -562,6 +563,7 @@ async function uploadLocalVpks() {
     isUploading,
     useBetterNaming,
     useAutoOpenExport,
+    exportProgress,
     sftpSettings,
     remoteVpkFiles,
     notification,

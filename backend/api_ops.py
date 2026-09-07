@@ -100,6 +100,17 @@ class VpkOpsApiMixin:
                 title = self.metadata_service.get_addontitle(path)
                 titles.append(title)
 
+            def _push_progress(stage: str, done: int, total: int) -> None:
+                """通过 evaluate_js 推送进度到前端;窗口不可用时静默跳过。"""
+                if not self._window:
+                    return
+                try:
+                    import json as _json
+                    payload = _json.dumps({"stage": stage, "done": done, "total": total})
+                    self._window.evaluate_js(f"window.__onExportProgress && window.__onExportProgress({payload})")
+                except Exception:
+                    pass
+
             # 直接运行，pywebview 会在单独的线程中调用此方法
             result = self.export_service.export_vpks(
                 file_paths,
@@ -107,6 +118,7 @@ class VpkOpsApiMixin:
                 titles=titles,
                 better_naming=better_naming,
                 overwrite=overwrite,
+                progress_callback=_push_progress,
             )
 
             return {

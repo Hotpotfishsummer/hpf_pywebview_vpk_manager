@@ -104,6 +104,7 @@
   "processing": "Processing...",
   "hardDelete": "Delete Permanently",
   "packingFiles": "Packing files...",
+  "compressingArchive": "Compressing archive...",
   "noVpkFilesHeading": "No VPK Files Found",
   "searchFilesPlaceholder": "Search files by name...",
   "clearSearch": "Clear search",

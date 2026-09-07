@@ -1,7 +1,7 @@
 """VPK 导出服务 - 处理 VPK 文件导出和 zstandard 压缩"""
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Callable, List, Optional
 import shutil
 import logging
 import tempfile
@@ -26,7 +26,7 @@ class VpkExportService:
     """VPK 文件导出和删除的服务类"""
 
     @staticmethod
-    def export_vpks(vpk_file_paths: List[str], output_dir: str, titles: Optional[List[str]] = None, better_naming: bool = False, overwrite: bool = False) -> str:
+    def export_vpks(vpk_file_paths: List[str], output_dir: str, titles: Optional[List[str]] = None, better_naming: bool = False, overwrite: bool = False, progress_callback: Optional[Callable[[str, int, int], None]] = None) -> str:
         """
         将选定的 VPK 文件导出到 zstandard 压缩的 tar 归档。
 
@@ -73,6 +73,8 @@ class VpkExportService:
             try:
                 # Copy VPK files to temp directory
                 for i, vpk_path_str in enumerate(vpk_file_paths):
+                    if progress_callback:
+                        progress_callback('copying', i + 1, len(vpk_file_paths))
                     vpk_path = Path(vpk_path_str)
                     
                     # 确定导出后的基础文件名
@@ -100,6 +102,8 @@ class VpkExportService:
                 logger.info(f"export_vpks: using {num_threads} threads for compression")
 
                 # Create zstandard context with maximum compression level and multi-threading
+                if progress_callback:
+                    progress_callback('compressing', 0, 0)
                 cctx = zstd.ZstdCompressor(
                     level=3,  # 默认压缩级别 (范围 1-22)
                     threads=num_threads,  # Multi-threaded compression

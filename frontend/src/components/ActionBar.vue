@@ -81,7 +81,7 @@
       <!-- Unified busy progress indicator -->
       <div v-if="isAnyBusy" class="export-progress">
         <div class="progress-bar">
-          <div class="progress-fill"></div>
+          <div class="progress-fill" :style="{ width: progressWidth }"></div>
         </div>
         <span class="progress-text">{{ busyText }}</span>
       </div>
@@ -112,12 +112,26 @@ const isAnyBusy = computed(() => {
 
 const busyText = computed(() => {
   if (store.isExporting) return $t('packingFiles')
+  if (store.isExporting) {
+    const { stage, done, total } = store.exportProgress
+    if (stage === 'compressing') return $t('compressingArchive')
+    if (stage === 'copying' && total > 0) return `${$t('packingFiles')} (${done}/${total})`
+    return $t('packingFiles')
+  }
   if (store.isUploading) return $t('uploadingLocal')
   if (store.isDownloading) return $t('downloadingRemote')
   if (store.isImporting) return $t('importing')
   if (store.isLocalizing) return $t('converting')
   if (store.isDeleting) return $t('processing')
   return ''
+})
+
+const progressWidth = computed(() => {
+  if (store.isExporting && store.exportProgress.total > 0) {
+    const pct = Math.round((store.exportProgress.done / store.exportProgress.total) * 100)
+    return `${pct}%`
+  }
+  return '100%' // 非导出操作保持装饰性动画
 })
 
 async function handleExport() {

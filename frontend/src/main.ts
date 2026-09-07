@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import i18n from '@/i18n'
+import { useVpkManagerStore } from '@/stores/vpk-manager'
 import App from '@/App.vue'
 
 // ============================================================
@@ -51,6 +52,14 @@ waitForApi().then(() => {
   }
 
   const app = createApp(App)
+  
+  // 导出进度回调(后端通过 evaluate_js 调用)
+  ;(window as any).__onExportProgress = (payload: { stage: string; done: number; total: number }) => {
+    const { exportProgress } = useVpkManagerStore()
+    exportProgress.stage = payload.stage
+    exportProgress.done = payload.done
+    exportProgress.total = payload.total
+  }
   
   app.use(createPinia())
   app.use(i18n)
