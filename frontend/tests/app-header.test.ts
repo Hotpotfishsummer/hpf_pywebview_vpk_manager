@@ -56,4 +56,13 @@ describe('AppHeader 组件', () => {
     await wrapper.findAll('.lang-btn')[1].trigger('click')
     expect(locale.value).toBe('zh')
   })
+
+  it('语言切换写入 localStorage', async () => {
+    localStorage.removeItem('locale')
+    const wrapper = mountHeader()
+    await wrapper.findAll('.lang-btn')[0].trigger('click')
+    expect(localStorage.getItem('locale')).toBe('en')
+    await wrapper.findAll('.lang-btn')[1].trigger('click')
+    expect(localStorage.getItem('locale')).toBe('zh')
+  })
 })

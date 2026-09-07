@@ -54,8 +54,19 @@ const { locale, t: $t } = useI18n()
 
 const currentLocale = computed(() => locale.value)
 
+const STORAGE_KEY = 'locale'
+
+function saveLocale(lang: string) {
+  try {
+    localStorage.setItem(STORAGE_KEY, lang)
+  } catch {
+    // 忽略不可写 localStorage(如隐私模式/安全策略)
+  }
+}
+
 function switchLanguage(lang: string) {
   locale.value = lang
+  saveLocale(lang)
 }
 </script>
 
