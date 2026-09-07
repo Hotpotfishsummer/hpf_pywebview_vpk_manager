@@ -22,6 +22,7 @@
   "importSuccess": "成功导入了 {count} 个文件",
   "localize": "本地化",
   "betterNaming": "更好的命名",
+  "autoOpenExport": "导出后打开文件夹",
   "betterNamingHelp": "使用游戏内显示的标题作为文件名，并去除多余路径和空格",
   "localizeTooltip": "将选中的创意工坊文件复制到 addons 目录",
   "selectionInfo": "已选择 {count} 项",

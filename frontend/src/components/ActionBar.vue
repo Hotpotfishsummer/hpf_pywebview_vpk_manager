@@ -67,6 +67,11 @@
           <span class="checkbox-help" :title="$t('betterNamingHelp')">❓</span>
         </label>
 
+        <label class="better-naming-checkbox">
+          <input type="checkbox" v-model="store.useAutoOpenExport" />
+          <span class="checkbox-text">{{ $t('autoOpenExport') }}</span>
+        </label>
+
         <span class="selection-info">
           {{ selectionCountText }}
         </span>

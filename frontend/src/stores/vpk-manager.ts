@@ -49,6 +49,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   const isDownloading = ref(false)
   const isUploading = ref(false)
   const useBetterNaming = ref(true) // 默认开启
+  const useAutoOpenExport = ref(true) // 默认开启
 
   // SFTP 设置
   const sftpSettings = reactive({
@@ -466,6 +467,9 @@ async function uploadLocalVpks() {
         selectedLocalVpks.clear()
         selectedWorkshopVpks.clear()
         showNotification($t('exportDone'), 'success')
+        if (useAutoOpenExport.value && outputDir) {
+          await callApi(api => api.open_directory(outputDir), false)
+        }
       } else if (result.exists) {
         // 文件已存在，由调用方决定如何处理（前端不自动弹出通知）
       } else {
@@ -557,6 +561,7 @@ async function uploadLocalVpks() {
     isDownloading,
     isUploading,
     useBetterNaming,
+    useAutoOpenExport,
     sftpSettings,
     remoteVpkFiles,
     notification,

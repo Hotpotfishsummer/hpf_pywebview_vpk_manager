@@ -22,6 +22,7 @@
   "importSuccess": "Successfully imported {count} files",
   "localize": "Localize",
   "betterNaming": "Better Naming",
+  "autoOpenExport": "Open folder after export",
   "betterNamingHelp": "Use the title shown in-game as filename and remove extra paths/spaces",
   "localizeTooltip": "Copy selected workshop files to addons directory",
   "selectionInfo": "Selected {count} items",
