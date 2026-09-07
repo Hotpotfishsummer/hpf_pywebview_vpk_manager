@@ -25,6 +25,7 @@
   "betterNamingHelp": "Use the title shown in-game as filename and remove extra paths/spaces",
   "localizeTooltip": "Copy selected workshop files to addons directory",
   "selectionInfo": "Selected {count} items",
+  "selectedFilesWithSize": "Selected {count} · {size}",
   "localizeSuccess": "Successfully localized {count} files",
   "deleteSuccess": "Files deleted successfully",
   "exportError": "Export failed",

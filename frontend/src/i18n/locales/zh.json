@@ -25,6 +25,7 @@
   "betterNamingHelp": "使用游戏内显示的标题作为文件名，并去除多余路径和空格",
   "localizeTooltip": "将选中的创意工坊文件复制到 addons 目录",
   "selectionInfo": "已选择 {count} 项",
+  "selectedFilesWithSize": "已选 {count} 个 · {size}",
   "localizeSuccess": "已成功本地化 {count} 个文件",
   "deleteSuccess": "文件已成功删除",
   "exportError": "导出失败",

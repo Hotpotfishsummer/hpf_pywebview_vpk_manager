@@ -12,6 +12,7 @@ const i18n = createI18n({
       deselectAll: '取消全选',
       selectAll: '全选',
       openInFileManager: '打开目录',
+      selectedFilesWithSize: '已选 {count} 个 · {size}',
     },
   },
 })
@@ -80,5 +81,36 @@ describe('VpkSection 组件', () => {
     await wrapper.findComponent({ name: 'VpkFileItem' }).vm.$emit('toggle')
 
     expect(wrapper.emitted('toggle-select')?.[0]).toEqual(['/a/1.vpk'])
+  })
+
+  it('选中项统计:数量显示', () => {
+    const files = [
+      { ...makeVpk('/a/1.vpk'), size: 1024 * 1024 },
+      { ...makeVpk('/a/2.vpk'), size: 2048 * 1024 },
+    ]
+    const wrapper = mountSection(files, new Set(['/a/1.vpk']))
+    expect(wrapper.find('.selection-stats').text()).toContain('已选 1 个')
+  })
+
+  it('选中项统计:大小格式化 MB', () => {
+    const files = [{ ...makeVpk('/a/1.vpk'), size: 5 * 1024 * 1024 }]
+    const wrapper = mountSection(files, new Set(['/a/1.vpk']))
+    expect(wrapper.find('.selection-stats').text()).toContain('5.00 MB')
+  })
+
+  it('选中项统计:多文件累计总大小', () => {
+    const files = [
+      { ...makeVpk('/a/1.vpk'), size: 1024 * 1024 },
+      { ...makeVpk('/a/2.vpk'), size: 1024 * 1024 },
+    ]
+    const wrapper = mountSection(files, new Set(['/a/1.vpk', '/a/2.vpk']))
+    expect(wrapper.find('.selection-stats').text()).toContain('已选 2 个')
+    expect(wrapper.find('.selection-stats').text()).toContain('2.00 MB')
+  })
+
+  it('未选中时不显示统计行', () => {
+    const files = [{ ...makeVpk('/a/1.vpk'), size: 1024 * 1024 }]
+    const wrapper = mountSection(files, new Set())
+    expect(wrapper.find('.selection-stats').exists()).toBe(false)
   })
 })

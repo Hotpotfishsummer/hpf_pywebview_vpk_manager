@@ -24,6 +24,9 @@
                 />
                 <span>{{ allSelected ? $t('deselectAll') : $t('selectAll') }}</span>
               </label>
+              <span v-if="selectedCount > 0" class="selection-stats">
+                {{ $t('selectedFilesWithSize', { count: selectedCount, size: selectedTotalSize }) }}
+              </span>
               <button
                 class="action-icon-btn"
                 @click.stop="$emit('open-folder')"
@@ -71,6 +74,28 @@ const expanded = ref(true)
 const allSelected = computed(() => {
   return props.files.length > 0 && props.files.every((vpk) => props.selectedSet.has(vpk.path))
 })
+
+const selectedCount = computed(() => {
+  return props.files.filter((vpk) => props.selectedSet.has(vpk.path)).length
+})
+
+const selectedTotalSize = computed(() => {
+  const total = props.files
+    .filter((vpk) => props.selectedSet.has(vpk.path))
+    .reduce((sum, vpk) => sum + vpk.size, 0)
+  return formatBytes(total)
+})
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1) return `${bytes} B`
+  if (kb < 1024) return `${kb.toFixed(2)} KB`
+  const mb = kb / 1024
+  if (mb < 1024) return `${mb.toFixed(2)} MB`
+  const gb = mb / 1024
+  return `${gb.toFixed(2)} GB`
+}
 
 function toggleExpanded() {
   expanded.value = !expanded.value
@@ -242,5 +267,16 @@ function toggleAll() {
 
 .checkbox-label:hover {
   color: #3b82f6;
+}
+
+.selection-stats {
+  font-size: 13px;
+  font-weight: 600;
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 999px;
+  padding: 4px 12px;
+  white-space: nowrap;
 }
 </style>
