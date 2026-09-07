@@ -71,6 +71,26 @@
                 placeholder="/home/user/l4d2/left4dead2/addons"
               >
             </div>
+
+            <!-- SFTP 连接测试 -->
+            <div class="settings-item connection-test">
+              <button
+                class="btn btn-outline test-connection-btn"
+                :disabled="isTestingConnection"
+                @click="handleTestConnection"
+              >
+                <span v-if="isTestingConnection" class="btn-spinner"></span>
+                <span v-else>&#128268;</span>
+                {{ isTestingConnection ? $t('sftpTesting') : $t('sftpTestConnection') }}
+              </button>
+              <span
+                v-if="connectionTestResult"
+                class="connection-test-result"
+                :class="connectionTestResult.ok ? 'test-ok' : 'test-fail'"
+              >
+                {{ connectionTestResult.message }}
+              </span>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -98,6 +118,26 @@ const emit = defineEmits<{
 const store = useVpkManagerStore()
 const { t: $t } = useI18n()
 const isResetting = ref(false)
+const isTestingConnection = ref(false)
+const connectionTestResult = ref<{ ok: boolean; message: string } | null>(null)
+
+async function handleTestConnection() {
+  isTestingConnection.value = true
+  connectionTestResult.value = null
+  try {
+    const result = await getApi().list_remote_vpks()
+    if (result.success) {
+      const count = (result.files || []).length
+      connectionTestResult.value = { ok: true, message: $t('sftpTestSuccess', { count }) }
+    } else {
+      connectionTestResult.value = { ok: false, message: $t('sftpTestFailed', { error: result.error || 'unknown' }) }
+    }
+  } catch (error) {
+    connectionTestResult.value = { ok: false, message: $t('sftpTestFailed', { error: String(error) }) }
+  } finally {
+    isTestingConnection.value = false
+  }
+}
 
 async function handleResetData() {
   if (confirm($t('resetConfirm'))) {
@@ -256,6 +296,32 @@ async function handleResetData() {
   align-items: center;
   gap: 16px;
 }
+
+.connection-test {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.test-connection-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.connection-test-result {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.connection-test-result.test-ok {
+  color: #10b981;
+}
+
+.connection-test-result.test-fail {
+  color: #ef4444;
 
 .setting-text {
   flex: 1;
