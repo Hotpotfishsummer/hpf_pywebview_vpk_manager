@@ -11,7 +11,10 @@
     <transition name="expand">
       <div v-if="expanded" class="section-content-wrapper">
         <div class="section-content">
-          <div v-if="files.length === 0" class="empty-message">
+          <div v-if="files.length === 0 && isScanning" class="file-list">
+            <SkeletonLoader :item-count="3" />
+          </div>
+          <div v-else-if="files.length === 0" class="empty-message">
             {{ emptyText }}
           </div>
           <div v-else class="file-list">
@@ -53,6 +56,7 @@
 import { ref, computed } from 'vue'
 import type { VpkFile } from '@/stores/vpk-manager'
 import VpkFileItem from '@/components/VpkFileItem.vue'
+import SkeletonLoader from '@/components/SkeletonLoader.vue'
 
 const props = defineProps<{
   title: string
@@ -60,6 +64,7 @@ const props = defineProps<{
   emptyText: string
   files: VpkFile[]
   selectedSet: Set<string>
+  isScanning?: boolean
 }>()
 
 const emit = defineEmits<{

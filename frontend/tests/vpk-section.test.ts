@@ -29,7 +29,7 @@ function makeVpk(path: string): VpkFile {
   }
 }
 
-function mountSection(files: VpkFile[], selected: Set<string>) {
+function mountSection(files: VpkFile[], selected: Set<string>, isScanning = false) {
   return mount(VpkSection, {
     props: {
       title: '本地 VPK',
@@ -37,6 +37,7 @@ function mountSection(files: VpkFile[], selected: Set<string>) {
       emptyText: '没有文件',
       files,
       selectedSet: selected,
+      isScanning,
     },
     global: { plugins: [i18n] },
   })
@@ -112,5 +113,24 @@ describe('VpkSection 组件', () => {
     const files = [{ ...makeVpk('/a/1.vpk'), size: 1024 * 1024 }]
     const wrapper = mountSection(files, new Set())
     expect(wrapper.find('.selection-stats').exists()).toBe(false)
+  })
+
+  it('扫描中且无文件时显示骨架屏', () => {
+    const wrapper = mountSection([], new Set(), true)
+    expect(wrapper.find('.skeleton-list').exists()).toBe(true)
+    expect(wrapper.find('.empty-message').exists()).toBe(false)
+  })
+
+  it('非扫描且无文件时显示空文案', () => {
+    const wrapper = mountSection([], new Set(), false)
+    expect(wrapper.find('.skeleton-list').exists()).toBe(false)
+    expect(wrapper.find('.empty-message').exists()).toBe(true)
+  })
+
+  it('扫描中但已有旧文件时保留文件列表', () => {
+    const files = [makeVpk('/a/1.vpk')]
+    const wrapper = mountSection(files, new Set(), true)
+    expect(wrapper.find('.skeleton-list').exists()).toBe(false)
+    expect(wrapper.findAllComponents({ name: 'VpkFileItem' })).toHaveLength(1)
   })
 })
