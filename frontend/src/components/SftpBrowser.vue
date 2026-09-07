@@ -11,6 +11,18 @@
         <span :class="{ 'spinning': store.isRemoteScanning }">🔄</span>
         {{ store.isRemoteScanning ? $t('loading') : $t('refresh') }}
       </button>
+      <div class="sort-controls">
+        <button
+          v-for="key in sortKeys"
+          :key="key"
+          class="sort-btn"
+          :class="{ active: sortField === key }"
+          @click="toggleSort(key)"
+        >
+          {{ $t(sortLabels[key]) }}
+          <span v-if="sortField === key">{{ sortAsc ? '↑' : '↓' }}</span>
+        </button>
+      </div>
     </div>
 
     <div class="browser-content">
@@ -59,7 +71,7 @@
 
       <div v-else class="remote-list">
         <div
-          v-for="file in store.remoteVpkFiles"
+          v-for="file in sortedRemoteFiles"
           :key="file.path"
           class="remote-item"
           :class="{ 'is-disabled': file.is_disabled, 'is-selected': store.selectedRemoteVpks.has(file.path) }"
@@ -95,9 +107,36 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import { useVpkManagerStore } from '@/stores/vpk-manager'
 import { useI18n } from 'vue-i18n'
+import type { RemoteFile } from '@/types/api'
+
+type SortField = 'name' | 'size' | 'modified_time'
+const sortKeys: SortField[] = ['name', 'size', 'modified_time']
+const sortField = ref<SortField>('name')
+const sortAsc = ref(true)
+const sortLabels: Record<SortField, string> = { name: 'sortByName', size: 'sortBySize', modified_time: 'sortByDate' }
+
+function toggleSort(key: SortField) {
+  if (sortField.value === key) {
+    sortAsc.value = !sortAsc.value
+  } else {
+    sortField.value = key
+    sortAsc.value = true
+  }
+}
+
+const sortedRemoteFiles = computed(() => {
+  const files = [...store.remoteVpkFiles]
+  const dir = sortAsc.value ? 1 : -1
+  files.sort((a: RemoteFile, b: RemoteFile) => {
+    const field = sortField.value
+    if (field === 'name') return a.name.localeCompare(b.name) * dir
+    return ((a[field] as number) - (b[field] as number)) * dir
+  })
+  return files
+})
 
 const store = useVpkManagerStore()
 const { t: $t } = useI18n()
@@ -156,6 +195,31 @@ onMounted(() => {
 }
 
 .browser-header {
+.sort-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.sort-btn {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sort-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.sort-btn:hover {
+  color: #e2e8f0;
+}
   padding: 16px 20px;
   background: rgba(30, 41, 59, 0.6);
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
