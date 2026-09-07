@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import i18n from '@/i18n'
 import { getApi, callApi } from '@/composables/useApi'
 import type { RemoteFile } from '@/types/api'
@@ -23,6 +23,20 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   const currentDirectory = ref<string>('')
   const localVpkFiles = ref<VpkFile[]>([])
   const workshopVpkFiles = ref<VpkFile[]>([])
+  const searchQuery = ref<string>('')
+
+  function matchesQuery(vpk: VpkFile, query: string): boolean {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return vpk.display_name.toLowerCase().includes(q) || vpk.name.toLowerCase().includes(q)
+  }
+
+  const filteredLocalVpkFiles = computed(() =>
+    localVpkFiles.value.filter((vpk) => matchesQuery(vpk, searchQuery.value))
+  )
+  const filteredWorkshopVpkFiles = computed(() =>
+    workshopVpkFiles.value.filter((vpk) => matchesQuery(vpk, searchQuery.value))
+  )
   const selectedLocalVpks = reactive(new Set<string>())
   const selectedWorkshopVpks = reactive(new Set<string>())
   const isScanning = ref(false)
@@ -83,24 +97,30 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     }
   }
 
-  function selectAllLocal() {
-    localVpkFiles.value.forEach(vpk => {
-      selectedLocalVpks.add(vpk.path)
-    })
+  function selectAllLocal(paths?: string[]) {
+    const list = paths ?? localVpkFiles.value.map((v) => v.path)
+    list.forEach((p) => selectedLocalVpks.add(p))
   }
 
-  function deselectAllLocal() {
-    selectedLocalVpks.clear()
+  function deselectAllLocal(paths?: string[]) {
+    if (paths) {
+      paths.forEach((p) => selectedLocalVpks.delete(p))
+    } else {
+      selectedLocalVpks.clear()
+    }
   }
 
-  function selectAllWorkshop() {
-    workshopVpkFiles.value.forEach(vpk => {
-      selectedWorkshopVpks.add(vpk.path)
-    })
+  function selectAllWorkshop(paths?: string[]) {
+    const list = paths ?? workshopVpkFiles.value.map((v) => v.path)
+    list.forEach((p) => selectedWorkshopVpks.add(p))
   }
 
-  function deselectAllWorkshop() {
-    selectedWorkshopVpks.clear()
+  function deselectAllWorkshop(paths?: string[]) {
+    if (paths) {
+      paths.forEach((p) => selectedWorkshopVpks.delete(p))
+    } else {
+      selectedWorkshopVpks.clear()
+    }
   }
 
   function getSelectedVpkPaths(): string[] {
@@ -521,6 +541,9 @@ async function uploadLocalVpks() {
     currentDirectory,
     localVpkFiles,
     workshopVpkFiles,
+    searchQuery,
+    filteredLocalVpkFiles,
+    filteredWorkshopVpkFiles,
     selectedLocalVpks,
     selectedWorkshopVpks,
     selectedRemoteVpks,

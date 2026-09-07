@@ -2,7 +2,7 @@
   <section class="vpk-section">
     <div class="section-header" @click="toggleExpanded">
       <h2 class="section-title">
-        {{ title }} ({{ files.length }})
+        {{ title }} ({{ isFiltering ? `${files.length}/${totalCount}` : files.length }})
       </h2>
       <span class="section-toggle" :class="{ rotated: expanded }">▶</span>
     </div>
@@ -14,8 +14,14 @@
           <div v-if="files.length === 0 && isScanning" class="file-list">
             <SkeletonLoader :item-count="3" />
           </div>
+          <div v-else-if="isFiltering && files.length === 0" class="empty-message">
+            {{ $t('noSearchResults') }}
+          </div>
           <div v-else-if="files.length === 0" class="empty-message">
             {{ emptyText }}
+          </div>
+          <div v-else-if="isFiltering && files.length === 0" class="empty-message">
+            {{ $t('noSearchResults') }}
           </div>
           <div v-else class="file-list">
             <div class="list-actions">
@@ -63,18 +69,23 @@ const props = defineProps<{
   subtitle: string
   emptyText: string
   files: VpkFile[]
+  totalCount?: number
   selectedSet: Set<string>
   isScanning?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'toggle-select', path: string): void
-  (e: 'select-all'): void
-  (e: 'deselect-all'): void
+  (e: 'select-all', paths: string[]): void
+  (e: 'deselect-all', paths: string[]): void
   (e: 'open-folder'): void
 }>()
 
 const expanded = ref(true)
+
+const isFiltering = computed(() => {
+  return props.totalCount !== undefined && props.files.length < props.totalCount
+})
 
 const allSelected = computed(() => {
   return props.files.length > 0 && props.files.every((vpk) => props.selectedSet.has(vpk.path))
@@ -108,9 +119,9 @@ function toggleExpanded() {
 
 function toggleAll() {
   if (allSelected.value) {
-    emit('deselect-all')
+    emit('deselect-all', props.files.map((v) => v.path))
   } else {
-    emit('select-all')
+    emit('select-all', props.files.map((v) => v.path))
   }
 }
 </script>
