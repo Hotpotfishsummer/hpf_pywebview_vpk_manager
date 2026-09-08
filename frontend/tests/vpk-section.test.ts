@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import VpkSection from '@/components/VpkSection.vue'
@@ -44,6 +45,22 @@ function mountSection(files: VpkFile[], selected: Set<string>, isScanning = fals
 }
 
 describe('VpkSection 组件', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('折叠状态持久化:重新挂载后保持上次状态', async () => {
+    const wrapper = mountSection([makeVpk('/a/1.vpk')], new Set())
+    await wrapper.find('.section-header').trigger('click')
+    expect(localStorage.getItem('vpk-section-expanded:vpk-section')).toBe('false')
+    wrapper.unmount()
+
+    const remounted = mountSection([makeVpk('/a/1.vpk')], new Set())
+    expect(remounted.find('.file-list').exists()).toBe(false)
+    await remounted.find('.section-header').trigger('click')
+    expect(localStorage.getItem('vpk-section-expanded:vpk-section')).toBe('true')
+  })
+
   it('空列表显示空文案,不渲染列表', () => {
     const wrapper = mountSection([], new Set())
     expect(wrapper.text()).toContain('没有文件')

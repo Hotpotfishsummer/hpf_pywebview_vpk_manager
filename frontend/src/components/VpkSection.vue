@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { VpkFile } from '@/stores/vpk-manager'
 import VpkFileItem from '@/components/VpkFileItem.vue'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
@@ -87,7 +87,9 @@ const emit = defineEmits<{
   (e: 'delete', path: string): void
 }>()
 
-const expanded = ref(true)
+const SECTION_STATE_KEY = 'vpk-section-expanded'
+const SECTION_ID = 'vpk-section'
+const expanded = ref(loadExpanded())
 
 const isFiltering = computed(() => {
   return props.totalCount !== undefined && props.files.length < props.totalCount
@@ -122,6 +124,29 @@ function formatBytes(bytes: number): string {
 function toggleExpanded() {
   expanded.value = !expanded.value
 }
+
+function loadExpanded(): boolean {
+  try {
+    const raw = localStorage.getItem(`${SECTION_STATE_KEY}:${SECTION_ID}`)
+    if (raw !== null) return raw !== 'false'
+  } catch {
+    // 忽略 localStorage 不可用(隐私模式/安全策略)
+  }
+  return true
+}
+
+function persistExpanded(value: boolean) {
+  try {
+    localStorage.setItem(`${SECTION_STATE_KEY}:${SECTION_ID}`, String(value))
+  } catch {
+    // 忽略不可写 localStorage
+  }
+}
+
+
+watch(expanded, (value) => {
+  persistExpanded(value)
+})
 
 function toggleAll() {
   if (allSelected.value) {
