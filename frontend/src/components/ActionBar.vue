@@ -159,7 +159,7 @@ async function handleExport() {
     const result = await store.exportVpks(outputDir)
     if (result && result.exists) {
       // 目标归档已存在，询问是否覆盖
-      if (confirm($t('confirmOverwriteExport'))) {
+      if (await store.showConfirm($t('confirmOverwriteExport'))) {
         await store.exportVpks(outputDir, true)
       }
     }
@@ -204,7 +204,7 @@ async function handleDelete() {
   }
 
   const message = $t('confirmHardDelete') + ` (${selectedCount})`
-  if (confirm(message)) {
+  if (await store.showConfirm(message)) {
     await store.deleteVpks(false)
   }
 }

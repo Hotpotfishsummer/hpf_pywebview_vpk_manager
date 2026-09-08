@@ -105,6 +105,8 @@
   "hardDelete": "Delete Permanently",
   "packingFiles": "Packing files...",
   "compressingArchive": "Compressing archive...",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
   "noVpkFilesHeading": "No VPK Files Found",
   "searchFilesPlaceholder": "Search files by name...",
   "clearSearch": "Clear search",

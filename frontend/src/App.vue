@@ -5,6 +5,8 @@
 
     <SettingsModal v-model:show="showSettings" />
 
+    <ConfirmDialog />
+
     <!-- Error/Success banner -->
     <transition name="slide-down">
       <StatusBanner v-if="store.notification.message" />
@@ -70,6 +72,7 @@ import ActionBar from '@/components/ActionBar.vue'
 import DirectorySelector from '@/components/DirectorySelector.vue'
 import VpkFilesList from '@/components/VpkFilesList.vue'
 import SettingsModal from '@/components/SettingsModal.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SftpBrowser from '@/components/SftpBrowser.vue'
 
 const store = useVpkManagerStore()

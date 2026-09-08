@@ -140,7 +140,7 @@ async function handleTestConnection() {
 }
 
 async function handleResetData() {
-  if (confirm($t('resetConfirm'))) {
+  if (await store.showConfirm($t('resetConfirm'))) {
     try {
       isResetting.value = true
       await getApi().reset_app_data()

@@ -38,7 +38,6 @@ async function mountBar(selected: string[] = []) {
 
 describe('ActionBar 组件', () => {
   beforeEach(() => {
-    vi.stubGlobal('confirm', vi.fn(() => true))
   })
 
   it('未选择时显示选择计数为 0,仍渲染操作按钮', async () => {
@@ -50,11 +49,11 @@ describe('ActionBar 组件', () => {
   it('handleDelete 在 confirm=true 时调用 deleteVpks(false)', async () => {
     const { wrapper, store } = await mountBar(['/a/1.vpk'])
     const spy = vi.spyOn(store, 'deleteVpks').mockResolvedValue(undefined)
+    vi.spyOn(store, 'showConfirm').mockResolvedValue(true)
 
     await wrapper.find('.btn-delete').trigger('click')
     await flushPromises()
 
-    expect(confirm).toHaveBeenCalled()
     expect(spy).toHaveBeenCalledWith(false)
   })
 

@@ -32,9 +32,6 @@ async function mountBrowser() {
 }
 
 describe('SftpBrowser 组件', () => {
-  beforeEach(() => {
-    vi.stubGlobal('confirm', vi.fn(() => true))
-  })
 
   it('挂载时未配置 SFTP 不触发扫描,显示空态', async () => {
     const { wrapper, store } = await mountBrowser()
@@ -62,12 +59,13 @@ describe('SftpBrowser 组件', () => {
     store.remoteVpkFiles.push(makeRemote('/srv/a.vpk'))
     store.selectedRemoteVpks.add('/srv/a.vpk')
     const spy = vi.spyOn(store, 'deleteMultipleRemoteVpks').mockResolvedValue()
+    vi.spyOn(store, 'showConfirm').mockResolvedValue(true)
     await wrapper.vm.$nextTick()
 
     await wrapper.find('.btn-action.delete').trigger('click')
     await flushPromises()
 
-    expect(confirm).toHaveBeenCalled()
+    expect(store.showConfirm).toHaveBeenCalled()
     expect(spy).toHaveBeenCalled()
   })
 

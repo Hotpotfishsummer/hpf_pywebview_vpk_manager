@@ -65,6 +65,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { VpkFile } from '@/stores/vpk-manager'
+import { useVpkManagerStore } from '@/stores/vpk-manager'
 import { callApi } from '@/composables/useApi'
 import { useI18n } from 'vue-i18n'
 
@@ -82,8 +83,9 @@ const emit = defineEmits<{
 
 const { t: $t } = useI18n()
 
-function handleDelete() {
-  if (confirm($t('confirmHardDelete'))) {
+async function handleDelete() {
+  const confirmed = await useVpkManagerStore().showConfirm($t('confirmHardDelete'))
+  if (confirmed) {
     emit('delete', props.vpk.path)
   }
 }

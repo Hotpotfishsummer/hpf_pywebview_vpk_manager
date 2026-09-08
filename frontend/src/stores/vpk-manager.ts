@@ -69,6 +69,24 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
     type: 'info' as 'success' | 'error' | 'info'
   })
 
+  const confirmState = reactive({ show: false, message: '', resolve: null as null | ((v: boolean) => void) })
+
+  function showConfirm(message: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmState.message = message
+      confirmState.show = true
+      confirmState.resolve = resolve
+    })
+  }
+
+  function resolveConfirm(value: boolean) {
+    if (confirmState.resolve) {
+      confirmState.resolve(value)
+      confirmState.resolve = null
+    }
+    confirmState.show = false
+  }
+
   function showNotification(message: string, type: 'success' | 'error' | 'info' = 'info') {
     notification.message = message
     notification.type = type
@@ -568,6 +586,9 @@ async function uploadLocalVpks() {
     remoteVpkFiles,
     notification,
     showNotification,
+    showConfirm,
+    resolveConfirm,
+    confirmState,
     toggleLocalVpkSelection,
     toggleWorkshopVpkSelection,
     toggleRemoteVpkSelection,

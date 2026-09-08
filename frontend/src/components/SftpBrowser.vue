@@ -167,7 +167,7 @@ async function handleBatchDisable() {
 }
 
 async function handleBatchDelete() {
-  if (confirm($t('confirmDeleteSelectedRemote', { count: store.selectedRemoteVpks.size }))) {
+  if (await store.showConfirm($t('confirmDeleteSelectedRemote', { count: store.selectedRemoteVpks.size }))) {
     await store.deleteMultipleRemoteVpks()
   }
 }

@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createI18n } from 'vue-i18n'
 import { createPinia, setActivePinia } from 'pinia'
 import SettingsModal from '@/components/SettingsModal.vue'
+import { useVpkManagerStore } from '@/stores/vpk-manager'
 
 const i18n = createI18n({
   legacy: false,
@@ -31,7 +32,6 @@ async function mountModal() {
 
 describe('SettingsModal 组件', () => {
   beforeEach(() => {
-    vi.stubGlobal('confirm', vi.fn(() => true))
   })
 
   it('show=false 时不渲染', () => {
@@ -45,6 +45,8 @@ describe('SettingsModal 组件', () => {
 
   it('重置按钮成功后复位为可点击(i18n 文案)', async () => {
     const wrapper = await mountModal()
+    const store = useVpkManagerStore()
+    vi.spyOn(store, 'showConfirm').mockResolvedValue(true)
     const api = {
       reset_app_data: vi.fn(async () => true),
     }

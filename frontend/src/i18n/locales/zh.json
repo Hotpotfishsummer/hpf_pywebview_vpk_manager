@@ -105,6 +105,8 @@
   "hardDelete": "彻底删除",
   "packingFiles": "正在打包文件...",
   "compressingArchive": "正在压缩归档...",
+  "cancel": "取消",
+  "confirm": "确认",
   "noVpkFilesHeading": "未找到 VPK 文件",
   "searchFilesPlaceholder": "搜索文件名...",
   "clearSearch": "清除搜索",
