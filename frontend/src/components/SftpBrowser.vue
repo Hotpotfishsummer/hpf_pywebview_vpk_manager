@@ -11,6 +11,12 @@
         <span :class="{ 'spinning': store.isRemoteScanning }">🔄</span>
         {{ store.isRemoteScanning ? $t('loading') : $t('refresh') }}
       </button>
+      <input
+        v-model="remoteSearchQuery"
+        type="text"
+        class="remote-search-input"
+        :placeholder="$t('searchFilesPlaceholder')"
+      >
       <div class="sort-controls">
         <button
           v-for="key in sortKeys"
@@ -116,6 +122,7 @@ type SortField = 'name' | 'size' | 'modified_time'
 const sortKeys: SortField[] = ['name', 'size', 'modified_time']
 const sortField = ref<SortField>('name')
 const sortAsc = ref(true)
+const remoteSearchQuery = ref('')
 const sortLabels: Record<SortField, string> = { name: 'sortByName', size: 'sortBySize', modified_time: 'sortByDate' }
 
 function toggleSort(key: SortField) {
@@ -128,7 +135,9 @@ function toggleSort(key: SortField) {
 }
 
 const sortedRemoteFiles = computed(() => {
-  const files = [...store.remoteVpkFiles]
+  const q = remoteSearchQuery.value.trim().toLowerCase()
+  let files = [...store.remoteVpkFiles]
+  if (q) files = files.filter((f) => f.name.toLowerCase().includes(q))
   const dir = sortAsc.value ? 1 : -1
   files.sort((a: RemoteFile, b: RemoteFile) => {
     const field = sortField.value
@@ -195,6 +204,22 @@ onMounted(() => {
 }
 
 .browser-header {
+.remote-search-input {
+  flex: 1;
+  min-width: 120px;
+  max-width: 220px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+  padding: 5px 10px;
+}
+
+.remote-search-input::placeholder {
+  color: #64748b;
+}
+
 .sort-controls {
   display: flex;
   gap: 4px;
