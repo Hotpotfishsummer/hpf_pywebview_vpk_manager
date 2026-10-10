@@ -138,7 +138,8 @@ def main():
         logger.info("前端日志现在会同步输出到本控制台")
         logger.info("=" * 80)
         
-        webview.start(debug=is_dev, http_port=9999)
+        # 让 pywebview 使用默认随机端口，避免 Windows 上固定端口被保留或拒绝绑定
+        webview.start(debug=is_dev)
         
         logger.info("=" * 80)
         logger.info("WebView 已停止")

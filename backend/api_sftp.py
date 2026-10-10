@@ -118,3 +118,26 @@ class SftpApiMixin:
         except Exception as e:
             logger.error(f"上传本地文件出错: {e}")
             return {"success": False, "error": str(e)}
+
+    def restart_l4d2_server(self) -> dict:
+        """重启远端 L4D2 容器服务 (调用位于 100.69.225.112:9370 的 l4d2-restarter 服务)"""
+        import requests
+
+        url = "http://100.69.225.112:9370/restart"
+        headers = {"X-Auth-Token": "9f3c81a4d2b6e750c4a8f1d3"}
+        try:
+            resp = requests.post(url, headers=headers, timeout=300)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("ok"):
+                    return {"success": True, "duration_s": data.get("duration_s", 0)}
+                else:
+                    err_msg = data.get("stderr") or data.get("stdout") or "未知错误"
+                    return {"success": False, "error": err_msg}
+            elif resp.status_code == 401:
+                return {"success": False, "error": "重启服务鉴权失败 (Token 无效)"}
+            else:
+                return {"success": False, "error": f"服务器返回 HTTP {resp.status_code}: {resp.text}"}
+        except Exception as e:
+            logger.error(f"调用 L4D2 重启服务出错: {e}")
+            return {"success": False, "error": str(e)}

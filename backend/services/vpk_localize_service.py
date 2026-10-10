@@ -83,10 +83,9 @@ class VpkLocalizeService:
             return fallback
 
         vpk_meta = self.metadata_service.get_vpk_metadata(str(src_path))
-        if vpk_meta and vpk_meta.addontitle:
-            from ..naming import build_export_base_name
-            return build_export_base_name(vpk_meta.addontitle, name, fallback)
-        return fallback
+        title = vpk_meta.addontitle if vpk_meta else None
+        from ..naming import build_export_base_name
+        return build_export_base_name(title, name, fallback)
 
     @staticmethod
     def _move_to_trash(path: Path, trash_dir: str) -> None:

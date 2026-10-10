@@ -123,5 +123,12 @@
   "viewInWorkshop": "View in Steam Workshop",
   "openWorkshopPage": "Open Workshop page",
   "resetting": "Cleaning...",
-  "executeNow": "Execute"
+  "executeNow": "Execute",
+  "restartServer": "Restart Server",
+  "restartingServer": "Restarting Server...",
+  "restartServerTooltip": "Restart L4D2 container via remote restarter service",
+  "confirmRestartServer": "Are you sure you want to restart the remote L4D2 server?\nThe restart takes about 10-20 seconds, and server connections will be temporarily interrupted.",
+  "restartServerSuccess": "Server restarted successfully",
+  "restartServerFailed": "Failed to restart server",
+  "restartServerError": "Restart service error: {error}"
 }

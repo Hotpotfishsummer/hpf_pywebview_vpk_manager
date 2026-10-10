@@ -14,6 +14,8 @@ const i18n = createI18n({
       selectionInfo: '已选 {count} 项', delete: '删除', enable: '启用', disable: '禁用',
       syncToLocal: '同步到本地',
       confirmDeleteSelectedRemote: '确认删除 {count} 项?',
+      restartServer: '重启服务器', restartingServer: '正在重启...',
+      restartServerTooltip: '重启服务', confirmRestartServer: '确定重启服务器吗?',
     },
   },
 })
@@ -82,5 +84,20 @@ describe('SftpBrowser 组件', () => {
 
     expect(en).toHaveBeenCalled()
     expect(dis).toHaveBeenCalled()
+  })
+
+  it('重启服务器按钮在 confirm 后委托 store.restartL4d2Server', async () => {
+    const { wrapper, store } = await mountBrowser()
+    const restartSpy = vi.spyOn(store, 'restartL4d2Server').mockResolvedValue()
+    vi.spyOn(store, 'showConfirm').mockResolvedValue(true)
+
+    const btn = wrapper.find('.btn-restart')
+    expect(btn.exists()).toBe(true)
+
+    await btn.trigger('click')
+    await flushPromises()
+
+    expect(store.showConfirm).toHaveBeenCalled()
+    expect(restartSpy).toHaveBeenCalled()
   })
 })

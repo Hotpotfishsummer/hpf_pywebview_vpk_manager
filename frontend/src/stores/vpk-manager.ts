@@ -48,6 +48,7 @@ export const useVpkManagerStore = defineStore('vpkManager', () => {
   const isRemoteScanning = ref(false)
   const isDownloading = ref(false)
   const isUploading = ref(false)
+  const isRestartingServer = ref(false)
   const useBetterNaming = ref(true) // 默认开启
   const useAutoOpenExport = ref(true) // 默认开启
   const exportProgress = reactive({ stage: '', done: 0, total: 0 })
@@ -451,6 +452,25 @@ async function uploadLocalVpks() {
     }
   }
 
+  /** 重启远端 L4D2 服务器容器 */
+  async function restartL4d2Server() {
+    isRestartingServer.value = true
+    showNotification($t('restartingServer'), 'info')
+    try {
+      const result = await getApi().restart_l4d2_server()
+      if (result.success) {
+        const duration = result.duration_s ? ` (${result.duration_s}s)` : ''
+        showNotification($t('restartServerSuccess') + duration, 'success')
+      } else {
+        showNotification(result.error || $t('restartServerFailed'), 'error')
+      }
+    } catch (error) {
+      showNotification($t('restartServerError', { error }), 'error')
+    } finally {
+      isRestartingServer.value = false
+    }
+  }
+
   async function openAddonsFolder() {
     if (!currentDirectory.value) return
     const path = `${currentDirectory.value}/left4dead2/addons`
@@ -579,6 +599,7 @@ async function uploadLocalVpks() {
     isRemoteScanning,
     isDownloading,
     isUploading,
+    isRestartingServer,
     useBetterNaming,
     useAutoOpenExport,
     exportProgress,
@@ -610,6 +631,7 @@ async function uploadLocalVpks() {
     enableRemoteVpks,
     downloadRemoteVpks,
     uploadLocalVpks,
+    restartL4d2Server,
     initialize,
     openAddonsFolder,
     openWorkshopFolder,

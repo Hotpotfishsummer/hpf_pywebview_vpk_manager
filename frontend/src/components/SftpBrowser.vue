@@ -11,6 +11,15 @@
         <span :class="{ 'spinning': store.isRemoteScanning }">🔄</span>
         {{ store.isRemoteScanning ? $t('loading') : $t('refresh') }}
       </button>
+      <button
+        @click="handleRestartServer"
+        class="btn-restart"
+        :disabled="store.isRestartingServer"
+        :title="$t('restartServerTooltip')"
+      >
+        <span :class="{ 'spinning': store.isRestartingServer }">{{ store.isRestartingServer ? '⏳' : '⚡' }}</span>
+        {{ store.isRestartingServer ? $t('restartingServer') : $t('restartServer') }}
+      </button>
       <input
         v-model="remoteSearchQuery"
         type="text"
@@ -181,6 +190,12 @@ async function handleBatchDelete() {
   }
 }
 
+async function handleRestartServer() {
+  if (await store.showConfirm($t('confirmRestartServer'))) {
+    await store.restartL4d2Server()
+  }
+}
+
 onMounted(() => {
   if (store.sftpSettings.address && store.sftpSettings.addons_path) {
     store.scanRemoteVpks()
@@ -294,6 +309,28 @@ onMounted(() => {
 .btn-refresh:hover:not(:disabled) {
   background: rgba(59, 130, 246, 0.25);
   border-color: #60a5fa;
+}
+
+.btn-restart {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-restart:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #f87171;
+  color: #fca5a5;
 }
 
 .spinning {

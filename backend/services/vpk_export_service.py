@@ -79,8 +79,9 @@ class VpkExportService:
                     
                     # 确定导出后的基础文件名
                     base_name = vpk_path.stem
-                    if better_naming and titles and i < len(titles) and titles[i]:
-                        base_name = build_export_base_name(titles[i], vpk_path.name, vpk_path.stem)
+                    if better_naming:
+                        title = titles[i] if (titles and i < len(titles)) else None
+                        base_name = build_export_base_name(title, vpk_path.name, vpk_path.stem)
 
                     # Copy VPK file
                     if vpk_path.exists():

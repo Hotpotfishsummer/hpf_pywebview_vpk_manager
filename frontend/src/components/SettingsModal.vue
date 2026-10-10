@@ -322,6 +322,7 @@ async function handleResetData() {
 
 .connection-test-result.test-fail {
   color: #ef4444;
+}
 
 .setting-text {
   flex: 1;

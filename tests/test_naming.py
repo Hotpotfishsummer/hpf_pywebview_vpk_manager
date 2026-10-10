@@ -140,7 +140,7 @@ class TestBuildExportBaseNameEdgeCases:
 
     def test_overlong_title_truncated_to_limit(self):
         # 超长标题截断到 120 字符,避免突破 Windows 路径上限
-        title = "很长的标题" * 50
+        title = "very_long_title_" * 20
         name = build_export_base_name(title, "mod.vpk", "fallback")
         assert len(name) == 120
 
@@ -185,8 +185,8 @@ class TestTrailingDotSanitization:
         assert sanitize_addon_title("Title_.") == "Title_"
 
     def test_inner_dots_are_legal_kept(self):
-        # Windows 仅禁止尾部点号;中间点号合法应保留
-        assert sanitize_addon_title("ver.1.2") == "ver.1.2"
+        # L4D2 引擎仅识别 _ 和 - 符号，点号作为非法字符替换为下划线
+        assert sanitize_addon_title("ver.1.2") == "ver_1_2"
 
     def test_dots_only_title_becomes_empty(self):
         assert sanitize_addon_title("...") == ""
@@ -194,3 +194,39 @@ class TestTrailingDotSanitization:
     def test_build_export_base_name_dot_title_falls_back(self):
         # 纯点号标题清洗后为空 → 回退原文件 stem
         assert build_export_base_name("...", "mod.vpk", "fallback") == "fallback"
+
+
+class TestL4D2EngineSafeNaming:
+    """L4D2 引擎仅支持英文字母、数字和简单的 _、- 符号"""
+
+    def test_brackets_replaced_with_underscore(self):
+        assert sanitize_addon_title("[L4D2] AK47 (Dragon Lore)") == "_L4D2_AK47_Dragon_Lore_"
+        assert sanitize_addon_title("{Pack} M16 [Sound]") == "_Pack_M16_Sound_"
+
+    def test_chinese_brackets_and_characters_replaced(self):
+        assert sanitize_addon_title("【武器】AK47（二次元）") == "_AK47_"
+        assert sanitize_addon_title("《求生之路2》Mod") == "_2_Mod"
+
+    def test_mixed_chinese_and_english(self):
+        assert sanitize_addon_title("Zoey 女仆装 Skin") == "Zoey_Skin"
+
+    def test_pure_chinese_title_falls_back(self):
+        # 纯中文标题清洗后只剩下划线，回退到原文件 stem 或工坊 ID
+        assert build_export_base_name("超级武器包", "12345678.vpk", "12345678") == "12345678"
+        assert build_export_base_name("超级武器包", "mod.vpk", "fallback") == "fallback"
+
+    def test_fallback_stem_with_illegal_characters_sanitized(self):
+        # 原文件名含括号或中文时，回退 stem 也一并清洗
+        assert build_export_base_name(None, "[Mod] (Zoey).vpk", "[Mod] (Zoey)") == "_Mod_Zoey_"
+        assert build_export_base_name(None, "【武器】AK47.vpk", "【武器】AK47") == "_AK47"
+
+    def test_pure_illegal_fallback_stem_uses_workshop_id_or_default(self):
+        assert build_export_base_name(None, "【武器包】-12345678.vpk", "【武器包】-12345678") == "12345678"
+        assert build_export_base_name(None, "武器包.vpk", "武器包") == "addon"
+
+    def test_hyphen_and_underscore_preserved(self):
+        assert sanitize_addon_title("AK-47_v2") == "AK-47_v2"
+        assert build_export_base_name("AK-47_v2", "12345678.vpk", "12345678") == "AK-47_v2-12345678"
+
+    def test_special_symbols_replaced(self):
+        assert sanitize_addon_title("Mod #1 & Pack!") == "Mod_1_Pack_"

@@ -142,6 +142,40 @@ class TestSftpApiMixin:
         assert args[1] == "/srv/addons"
         assert args[3] is True
 
+    def test_restart_l4d2_server_success(self, monkeypatch):
+        host = SftpHost()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"ok": True, "duration_s": 12.3}
+
+        monkeypatch.setattr("requests.post", lambda *a, **kw: mock_resp)
+
+        result = host.restart_l4d2_server()
+        assert result == {"success": True, "duration_s": 12.3}
+
+    def test_restart_l4d2_server_failure_response(self, monkeypatch):
+        host = SftpHost()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"ok": False, "stderr": "compose error"}
+
+        monkeypatch.setattr("requests.post", lambda *a, **kw: mock_resp)
+
+        result = host.restart_l4d2_server()
+        assert result == {"success": False, "error": "compose error"}
+
+    def test_restart_l4d2_server_exception(self, monkeypatch):
+        host = SftpHost()
+
+        def _raise(*a, **kw):
+            raise ConnectionError("connection refused")
+
+        monkeypatch.setattr("requests.post", _raise)
+
+        result = host.restart_l4d2_server()
+        assert result["success"] is False
+        assert "connection refused" in result["error"]
+
 
 class TestAppApiMixin:
     def test_get_last_directory(self):

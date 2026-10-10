@@ -123,5 +123,12 @@
   "viewInWorkshop": "在 Steam 创意工坊中查看",
   "openWorkshopPage": "打开创意工坊页面",
   "resetting": "正在清理…",
-  "executeNow": "执行"
+  "executeNow": "执行",
+  "restartServer": "重启服务器",
+  "restartingServer": "正在重启服务器...",
+  "restartServerTooltip": "调用远端 restarter 服务重启 L4D2 容器",
+  "confirmRestartServer": "确定要重启远程 L4D2 服务器吗？\n重启耗时约 10~20 秒，期间服务器连接将暂时中断。",
+  "restartServerSuccess": "服务器重启成功",
+  "restartServerFailed": "服务器重启失败",
+  "restartServerError": "重启服务调用异常: {error}"
 }

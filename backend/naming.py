@@ -9,8 +9,9 @@ import re
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-# Windows 文件名非法字符 + 控制字符
-_ILLEGAL_CHARS_PATTERN = r'[<>:"/\\|?*\x00-\x1f]'
+# L4D2 引擎仅支持英文字母、数字以及简单的 _ 和 - 符号
+# 其余字符(复杂括号、非英文符号/中文、其它特殊字符、控制字符及空白)均视为非法字符
+_ILLEGAL_CHARS_PATTERN = r'[^a-zA-Z0-9_-]'
 # 文件名中 8 位以上的连续数字视为 Steam 创意工坊 ID
 _WORKSHOP_ID_PATTERN = r'(\d{8,})'
 # 清洗后基名上限:Windows 默认路径上限 260,留出目录层级与扩展名余量
@@ -39,11 +40,16 @@ def vpk_stem_for_association(filename: str) -> str:
 
 
 def sanitize_addon_title(title: str) -> str:
-    """把 addontitle 清洗为安全的文件名:空格转下划线、非法字符替换、合并连续下划线
+    """把标题/文件名清洗为 L4D2 引擎安全的文件名。
 
-    另去除尾部点号——Windows 文件名不允许以点结尾(创建时会失败或被静默改动)。
+    L4D2 引擎仅识别 ASCII 字母、数字以及简单的 _ 和 - 符号;
+    复杂的括号、非英文符号(如中文/全角字符)以及其它特殊符号均替换为下划线。
+    空格转下划线、合并连续下划线、去除尾部点号。
     """
+    if not title:
+        return ""
     custom_title = title.replace(" ", "_").strip()
+    custom_title = custom_title.rstrip('.')
     base_name = re.sub(_ILLEGAL_CHARS_PATTERN, '_', custom_title)
     return re.sub(r'_{2,}', '_', base_name).rstrip('.')
 
@@ -51,17 +57,25 @@ def sanitize_addon_title(title: str) -> str:
 def build_export_base_name(addontitle: Optional[str], filename: str, fallback_stem: str) -> str:
     """根据 addontitle 生成上传/本地化/导出共用的基础文件名。
 
-    无标题或清洗后为空(纯非法字符)时回退到原文件 stem;若原文件名
-    带有工坊 ID 且清洗后的名称尚不包含它,则把 ID 追加到末尾。
+    无标题或清洗后为空(纯非法字符)时回退到清洗后的原文件 stem;
+    若原文件名带有工坊 ID 且清洗后的名称尚不包含它,则把 ID 追加到末尾。
+    确保最终文件名仅包含 L4D2 引擎可识别的合法字符(ASCII 字母、数字、_、-)。
     """
+    workshop_id = extract_workshop_id(filename)
+
+    # fallback_stem 也须清洗以剔除原有文件名中的非法字符(括号、非英文符号等)
+    safe_fallback = sanitize_addon_title(fallback_stem)[:_MAX_BASE_NAME_LEN]
+    non_id_part = safe_fallback.replace(workshop_id, "") if workshop_id else safe_fallback
+    if not non_id_part.strip('_-'):
+        safe_fallback = workshop_id or (safe_fallback if safe_fallback.strip('_-') else "addon")
+
     if not addontitle:
-        return fallback_stem
+        return safe_fallback
 
     base_name = sanitize_addon_title(addontitle)[:_MAX_BASE_NAME_LEN]
-    if not base_name.strip('_'):
-        base_name = fallback_stem
+    if not base_name.strip('_-'):
+        base_name = safe_fallback
 
-    workshop_id = extract_workshop_id(filename)
     if workshop_id and workshop_id not in base_name:
         base_name = f"{base_name}-{workshop_id}"
     return base_name

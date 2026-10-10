@@ -278,6 +278,7 @@ function formatSize(bytes: number): string {
 
 .quick-action-btn.delete-btn:hover {
   border-color: rgba(239, 68, 68, 0.4);
+}
 
 .vpk-file-item.is-disabled .file-name {
   text-decoration: line-through;

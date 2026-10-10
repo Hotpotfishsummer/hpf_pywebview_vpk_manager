@@ -35,6 +35,7 @@ interface PyWebViewApi {
   download_remote_vpks(remote_file_paths: string[]): Promise<DownloadResult>
   upload_local_vpks(local_file_paths: string[], better_naming?: boolean): Promise<UploadResult>
   open_external_url(url: string): Promise<void>
+  restart_l4d2_server(): Promise<ApiResult & { duration_s?: number }>
 }
 
 declare global {

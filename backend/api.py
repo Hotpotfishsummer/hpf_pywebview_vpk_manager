@@ -70,6 +70,7 @@ class VpkManagerApi(SftpApiMixin, AppApiMixin, VpkOpsApiMixin):
         'download_remote_vpks',
         'upload_local_vpks',
         'open_external_url',
+        'restart_l4d2_server',
     }
 
     def __init__(self):
